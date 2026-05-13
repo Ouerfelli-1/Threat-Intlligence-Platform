@@ -1,0 +1,5386 @@
+{
+  "info": {
+    "_postman_id": "e294172c-1d2a-4a09-a425-e7cb9dfa8d41",
+    "name": "TIP Platform \u2014 Unified Collection",
+    "description": "Every endpoint of every TIP service in one place.\n\n**Auth flow**: a pre-request script on the root folder calls POST /login on {{authUrl}} with {{adminUsername}} / {{adminPassword}} and caches the access token in {{accessToken}}. All requests use it automatically.\n\n**Hosts**: each service has its own {{baseUrlXxx}} variable. Edit them once for remote deploys (e.g. http://lightserv1.local:8000).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "",
+          "// TIP \u2014 auto-login as admin if accessToken is empty.",
+          "// Set {{adminUsername}} and {{adminPassword}} as collection / environment variables.",
+          "(function () {",
+          "    if (pm.variables.get(\"accessToken\")) return;",
+          "    var authBase = pm.variables.get(\"authUrl\") || \"http://localhost:8000\";",
+          "    pm.sendRequest({",
+          "        url: authBase + \"/login\",",
+          "        method: \"POST\",",
+          "        header: { \"Content-Type\": \"application/json\" },",
+          "        body: { mode: \"raw\", raw: JSON.stringify({",
+          "            username: pm.variables.get(\"adminUsername\") || \"admin\",",
+          "            password: pm.variables.get(\"adminPassword\") || \"changeme\",",
+          "        })},",
+          "    }, function (err, res) {",
+          "        if (err) { console.log(\"login error\", err); return; }",
+          "        if (res && res.json && res.json().access_token) {",
+          "            pm.variables.set(\"accessToken\", res.json().access_token);",
+          "            console.log(\"TIP: access token cached\");",
+          "        } else {",
+          "            console.log(\"TIP login failed\", res && res.text());",
+          "        }",
+          "    });",
+          "})();"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "auth (8000)",
+      "description": "JWT issuance, RBAC, sessions, and service identity",
+      "item": [
+        {
+          "name": "auth",
+          "item": [
+            {
+              "name": "Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/login",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "login"
+                  ],
+                  "variable": []
+                },
+                "description": "Login",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"string\",\n  \"password\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Refresh",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/refresh",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "refresh"
+                  ],
+                  "variable": []
+                },
+                "description": "Refresh",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Logout",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/logout",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "logout"
+                  ],
+                  "variable": []
+                },
+                "description": "Logout",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"refresh_token\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Service Login",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/service-login",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "service-login"
+                  ],
+                  "variable": []
+                },
+                "description": "Service Login",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"service_name\": \"string\",\n  \"bootstrap_token\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Me",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/me",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "me"
+                  ],
+                  "variable": []
+                },
+                "description": "Me"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "jwks",
+          "item": [
+            {
+              "name": "Jwks",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/.well-known/jwks.json",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    ".well-known",
+                    "jwks.json"
+                  ],
+                  "variable": []
+                },
+                "description": "Jwks"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/health",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "roles",
+          "item": [
+            {
+              "name": "List Roles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/roles",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "roles"
+                  ],
+                  "variable": []
+                },
+                "description": "List Roles"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Role",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/roles",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "roles"
+                  ],
+                  "variable": []
+                },
+                "description": "Create Role",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"string\",\n  \"permissions\": []\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Role",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/roles/{role_id}",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "roles",
+                    ":role_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "role_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Update Role",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"string\",\n  \"permissions\": [\n    \"string\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Role",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/roles/{role_id}",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "roles",
+                    ":role_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "role_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Delete Role"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "sessions",
+          "item": [
+            {
+              "name": "List Sessions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/sessions",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "sessions"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "user_id",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Sessions"
+              },
+              "response": []
+            },
+            {
+              "name": "Revoke Session",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/sessions/{session_id}",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "sessions",
+                    ":session_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "session_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Revoke Session"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "users",
+          "item": [
+            {
+              "name": "List Users",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/users",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "users"
+                  ],
+                  "variable": []
+                },
+                "description": "List Users"
+              },
+              "response": []
+            },
+            {
+              "name": "Create User",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/users",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "users"
+                  ],
+                  "variable": []
+                },
+                "description": "Create User",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"string\",\n  \"password\": \"string\",\n  \"role_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"supplementary_permissions\": [],\n  \"active\": true\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update User",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/users/{user_id}",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "users",
+                    ":user_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "user_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Update User",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"password\": \"string\",\n  \"role_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"supplementary_permissions\": [\n    \"string\"\n  ],\n  \"active\": false\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete User",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/users/{user_id}",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "users",
+                    ":user_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "user_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Delete User"
+              },
+              "response": []
+            },
+            {
+              "name": "Grant Permissions",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAuth}}/users/{user_id}/permissions",
+                  "host": [
+                    "{{baseUrlAuth}}"
+                  ],
+                  "path": [
+                    "users",
+                    ":user_id",
+                    "permissions"
+                  ],
+                  "variable": [
+                    {
+                      "key": "user_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Grant Permissions",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"permissions\": [\n    \"string\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "news-collector (8001)",
+      "description": "RSS/feed ingestion and article query",
+      "item": [
+        {
+          "name": "articles",
+          "item": [
+            {
+              "name": "List Articles",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/articles",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "articles"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "",
+                      "description": "Free-text match on title/summary",
+                      "disabled": true
+                    },
+                    {
+                      "key": "source",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "tag",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "until",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "last",
+                      "value": "",
+                      "description": "Shortcut: 1h, 24h, 7d",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Articles"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Article",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/articles/{article_id}",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "articles",
+                    ":article_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "article_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Article"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "feeds",
+          "item": [
+            {
+              "name": "List Feeds",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/feeds",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "feeds"
+                  ],
+                  "variable": []
+                },
+                "description": "List Feeds"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Feed",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/feeds",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "feeds"
+                  ],
+                  "variable": []
+                },
+                "description": "Create Feed",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"string\",\n  \"url\": \"string\",\n  \"kind\": \"rss\",\n  \"active\": true,\n  \"reliability\": 0.7\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Update Feed",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/feeds/{feed_id}",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "feeds",
+                    ":feed_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "feed_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Update Feed",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"string\",\n  \"url\": \"string\",\n  \"active\": false,\n  \"reliability\": 0.0\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Feed",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/feeds/{feed_id}",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "feeds",
+                    ":feed_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "feed_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Delete Feed"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "ingest",
+          "item": [
+            {
+              "name": "Run Ingest",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/ingest/run",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "ingest",
+                    "run"
+                  ],
+                  "variable": []
+                },
+                "description": "Run Ingest"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/health",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            },
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlNewscollector}}/health/sources",
+                  "host": [
+                    "{{baseUrlNewscollector}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "vuln-intel (8002)",
+      "description": "CVE/EPSS/KEV ingestion + query",
+      "item": [
+        {
+          "name": "cves",
+          "item": [
+            {
+              "name": "List Cves",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlVulnintel}}/cves",
+                  "host": [
+                    "{{baseUrlVulnintel}}"
+                  ],
+                  "path": [
+                    "cves"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "severity",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "product",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "kev",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "epss_gte",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Cves"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Cve",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlVulnintel}}/cves/{cve_id}",
+                  "host": [
+                    "{{baseUrlVulnintel}}"
+                  ],
+                  "path": [
+                    "cves",
+                    ":cve_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "cve_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Cve"
+              },
+              "response": []
+            },
+            {
+              "name": "List Kev",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlVulnintel}}/kev",
+                  "host": [
+                    "{{baseUrlVulnintel}}"
+                  ],
+                  "path": [
+                    "kev"
+                  ],
+                  "variable": []
+                },
+                "description": "List Kev"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlVulnintel}}/health",
+                  "host": [
+                    "{{baseUrlVulnintel}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            },
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlVulnintel}}/health/sources",
+                  "host": [
+                    "{{baseUrlVulnintel}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "refresh",
+          "item": [
+            {
+              "name": "Refresh Nvd",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlVulnintel}}/refresh/nvd",
+                  "host": [
+                    "{{baseUrlVulnintel}}"
+                  ],
+                  "path": [
+                    "refresh",
+                    "nvd"
+                  ],
+                  "variable": []
+                },
+                "description": "Refresh Nvd"
+              },
+              "response": []
+            },
+            {
+              "name": "Refresh Epss",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlVulnintel}}/refresh/epss",
+                  "host": [
+                    "{{baseUrlVulnintel}}"
+                  ],
+                  "path": [
+                    "refresh",
+                    "epss"
+                  ],
+                  "variable": []
+                },
+                "description": "Refresh Epss"
+              },
+              "response": []
+            },
+            {
+              "name": "Refresh Kev",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlVulnintel}}/refresh/kev",
+                  "host": [
+                    "{{baseUrlVulnintel}}"
+                  ],
+                  "path": [
+                    "refresh",
+                    "kev"
+                  ],
+                  "variable": []
+                },
+                "description": "Refresh Kev"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "threat-intel (8003)",
+      "description": "Supply chain threats, HIBP breaches, public disclosures",
+      "item": [
+        {
+          "name": "health",
+          "item": [
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatintel}}/health/sources",
+                  "host": [
+                    "{{baseUrlThreatintel}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "ingest",
+          "item": [
+            {
+              "name": "Trigger Ingest",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatintel}}/ingest/run",
+                  "host": [
+                    "{{baseUrlThreatintel}}"
+                  ],
+                  "path": [
+                    "ingest",
+                    "run"
+                  ],
+                  "variable": []
+                },
+                "description": "Trigger Ingest"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatintel}}/health",
+                  "host": [
+                    "{{baseUrlThreatintel}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "threats",
+          "item": [
+            {
+              "name": "List Threats",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatintel}}/threats",
+                  "host": [
+                    "{{baseUrlThreatintel}}"
+                  ],
+                  "path": [
+                    "threats"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "severity",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "q",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Threats"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Threat",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatintel}}/threats/{threat_id}",
+                  "host": [
+                    "{{baseUrlThreatintel}}"
+                  ],
+                  "path": [
+                    "threats",
+                    ":threat_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "threat_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Threat"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Threat Insight",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatintel}}/threats/{threat_id}/insight",
+                  "host": [
+                    "{{baseUrlThreatintel}}"
+                  ],
+                  "path": [
+                    "threats",
+                    ":threat_id",
+                    "insight"
+                  ],
+                  "variable": [
+                    {
+                      "key": "threat_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Threat Insight"
+              },
+              "response": []
+            },
+            {
+              "name": "List Breaches",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatintel}}/hibp-breaches",
+                  "host": [
+                    "{{baseUrlThreatintel}}"
+                  ],
+                  "path": [
+                    "hibp-breaches"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "is_verified",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Breaches"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "ioc-collector (8004)",
+      "description": "IOC ingestion + bulk lookup",
+      "item": [
+        {
+          "name": "indicators",
+          "item": [
+            {
+              "name": "List Indicators",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIoccollector}}/indicators",
+                  "host": [
+                    "{{baseUrlIoccollector}}"
+                  ],
+                  "path": [
+                    "indicators"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "value",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "min_confidence",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Indicators"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Indicator",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIoccollector}}/indicators/{indicator_id}",
+                  "host": [
+                    "{{baseUrlIoccollector}}"
+                  ],
+                  "path": [
+                    "indicators",
+                    ":indicator_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "indicator_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Indicator"
+              },
+              "response": []
+            },
+            {
+              "name": "Lookup",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIoccollector}}/indicators/lookup",
+                  "host": [
+                    "{{baseUrlIoccollector}}"
+                  ],
+                  "path": [
+                    "indicators",
+                    "lookup"
+                  ],
+                  "variable": []
+                },
+                "description": "Lookup",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"indicators\": [\n    {}\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "ingest",
+          "item": [
+            {
+              "name": "Run Ingest",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIoccollector}}/ingest/run",
+                  "host": [
+                    "{{baseUrlIoccollector}}"
+                  ],
+                  "path": [
+                    "ingest",
+                    "run"
+                  ],
+                  "variable": []
+                },
+                "description": "Run Ingest"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIoccollector}}/health",
+                  "host": [
+                    "{{baseUrlIoccollector}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            },
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIoccollector}}/health/sources",
+                  "host": [
+                    "{{baseUrlIoccollector}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "threat-actors (8005)",
+      "description": "Threat actor library \u2014 MITRE ATT&CK, ransomware groups, tools and TTPs",
+      "item": [
+        {
+          "name": "actors",
+          "item": [
+            {
+              "name": "List Actors",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/actors",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "actors"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "sector",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "country",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "motivation",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Actors"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Actor",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/actors/{actor_id}",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "actors",
+                    ":actor_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "actor_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Actor"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Actor Insight",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/actors/{actor_id}/insight",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "actors",
+                    ":actor_id",
+                    "insight"
+                  ],
+                  "variable": [
+                    {
+                      "key": "actor_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Actor Insight"
+              },
+              "response": []
+            },
+            {
+              "name": "List Actor Ttps",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/actors/{actor_id}/ttps",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "actors",
+                    ":actor_id",
+                    "ttps"
+                  ],
+                  "variable": [
+                    {
+                      "key": "actor_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "List Actor Ttps"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "health",
+          "item": [
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/health/sources",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "ingest",
+          "item": [
+            {
+              "name": "Trigger Refresh",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/refresh",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "refresh"
+                  ],
+                  "variable": []
+                },
+                "description": "Scheduler trigger: incremental refresh (MITRE + groups + recent victims)."
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Full Refresh",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/refresh/full",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "refresh",
+                    "full"
+                  ],
+                  "variable": []
+                },
+                "description": "First-boot / reconciliation trigger: full historical pull (~80k victims)."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/health",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "ransomware",
+          "item": [
+            {
+              "name": "List Groups",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/ransomware/groups",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "ransomware",
+                    "groups"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Groups"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Group",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/ransomware/groups/{group_id}",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "ransomware",
+                    "groups",
+                    ":group_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "group_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Group"
+              },
+              "response": []
+            },
+            {
+              "name": "List Victims",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/ransomware/victims",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "ransomware",
+                    "victims"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "group_id",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "country",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "sector",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Victims"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "tools",
+          "item": [
+            {
+              "name": "List Tools",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/tools",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "tools"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "",
+                      "description": "malware or tool",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Tools"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Tool",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/tools/{tool_id}",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "tools",
+                    ":tool_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "tool_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Tool"
+              },
+              "response": []
+            },
+            {
+              "name": "Actors Using Technique",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlThreatactors}}/ttps/{technique_id}",
+                  "host": [
+                    "{{baseUrlThreatactors}}"
+                  ],
+                  "path": [
+                    "ttps",
+                    ":technique_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "technique_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Returns actors that use the given ATT&CK technique."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "integrations (8006)",
+      "description": "Wazuh SIEM and MISP threat sharing integration",
+      "item": [
+        {
+          "name": "health",
+          "item": [
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/health/sources",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/health",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "misp",
+          "item": [
+            {
+              "name": "List Events",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/misp/events",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "misp",
+                    "events"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Events"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Event",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/misp/events/{event_id}",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "misp",
+                    "events",
+                    ":event_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "event_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Event"
+              },
+              "response": []
+            },
+            {
+              "name": "List Iocs",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/misp/iocs",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "misp",
+                    "iocs"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "type",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Iocs"
+              },
+              "response": []
+            },
+            {
+              "name": "Sync",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/misp/sync",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "misp",
+                    "sync"
+                  ],
+                  "variable": []
+                },
+                "description": "Sync"
+              },
+              "response": []
+            },
+            {
+              "name": "Push Iocs",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/misp/push",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "misp",
+                    "push"
+                  ],
+                  "variable": []
+                },
+                "description": "Push specific IOCs to MISP (or all high-confidence ones if list is empty).",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"indicator_ids\": [\n    \"00000000-0000-0000-0000-000000000000\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "wazuh",
+          "item": [
+            {
+              "name": "List Alerts",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/wazuh/alerts",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "wazuh",
+                    "alerts"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "severity_gte",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "agent_id",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Alerts"
+              },
+              "response": []
+            },
+            {
+              "name": "List Agents",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/wazuh/agents",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "wazuh",
+                    "agents"
+                  ],
+                  "variable": []
+                },
+                "description": "List Agents"
+              },
+              "response": []
+            },
+            {
+              "name": "Sync",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIntegrations}}/wazuh/sync",
+                  "host": [
+                    "{{baseUrlIntegrations}}"
+                  ],
+                  "path": [
+                    "wazuh",
+                    "sync"
+                  ],
+                  "variable": []
+                },
+                "description": "Sync"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "cmdb (8007)",
+      "description": "Asset inventory + versioned company profile",
+      "item": [
+        {
+          "name": "assets",
+          "item": [
+            {
+              "name": "List Assets",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/assets",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "assets"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "q",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "software",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "criticality",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Assets"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Asset",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/assets",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "assets"
+                  ],
+                  "variable": []
+                },
+                "description": "Create Asset",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"hostname\": \"string\",\n  \"ip\": \"string\",\n  \"os\": \"string\",\n  \"software\": {},\n  \"device_type\": \"string\",\n  \"criticality\": \"string\",\n  \"owner\": \"string\",\n  \"location\": \"string\",\n  \"tags\": [\n    \"string\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Asset",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/assets/{asset_id}",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "assets",
+                    ":asset_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "asset_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Asset"
+              },
+              "response": []
+            },
+            {
+              "name": "Update Asset",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/assets/{asset_id}",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "assets",
+                    ":asset_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "asset_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Update Asset",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"hostname\": \"string\",\n  \"ip\": \"string\",\n  \"os\": \"string\",\n  \"software\": {},\n  \"device_type\": \"string\",\n  \"criticality\": \"string\",\n  \"owner\": \"string\",\n  \"location\": \"string\",\n  \"tags\": [\n    \"string\"\n  ]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Asset",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/assets/{asset_id}",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "assets",
+                    ":asset_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "asset_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Delete Asset"
+              },
+              "response": []
+            },
+            {
+              "name": "Bulk Import",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/assets/bulk",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "assets",
+                    "bulk"
+                  ],
+                  "variable": []
+                },
+                "description": "Bulk Import"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/health",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "profile",
+          "item": [
+            {
+              "name": "Get Latest Profile",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/profile/latest",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "profile",
+                    "latest"
+                  ],
+                  "variable": []
+                },
+                "description": "Get Latest Profile"
+              },
+              "response": []
+            },
+            {
+              "name": "Patch Profile",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/profile",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "profile"
+                  ],
+                  "variable": []
+                },
+                "description": "Patch Profile",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"identity\": {\n    \"name\": \"string\",\n    \"sector\": \"string\",\n    \"sub_sector\": null,\n    \"employee_count_range\": null,\n    \"hq_country\": \"string\",\n    \"countries_of_operation\": [\n      null\n    ],\n    \"public_domains\": [\n      null\n    ],\n    \"language\": \"en\"\n  },\n  \"technology\": {\n    \"operating_systems\": [\n      null\n    ],\n    \"endpoint_os\": [\n      null\n    ],\n    \"software\": [\n      null\n    ],\n    \"network_devices\": [\n      null\n    ],\n    \"cloud_providers\": [\n      null\n    ],\n    \"identity_providers\": [\n      null\n    ],\n    \"remote_access\": [\n      null\n    ],\n    \"security_tools\": [\n      null\n    ],\n    \"industrial_ot\": false\n  },\n  \"exposure\": {\n    \"internet_facing_services\": [\n      null\n    ],\n    \"mobile_workforce\": false,\n    \"third_party_access\": false,\n    \"supply_chain_vendors\": [\n      null\n    ],\n    \"critical_data_types\": [\n      null\n    ]\n  },\n  \"compliance\": {\n    \"regulatory_frameworks\": [\n      null\n    ],\n    \"certifications\": [\n      null\n    ],\n    \"data_residency_requirements\": [\n      null\n    ]\n  },\n  \"geopolitical\": {\n    \"geopolitical_regions\": [\n      null\n    ],\n    \"conflict_adjacent\": false,\n    \"notable_partnerships\": [\n      null\n    ],\n    \"sanctions_exposure\": false\n  },\n  \"risk\": {\n    \"risk_appetite\": \"medium\",\n    \"crown_jewels\": [\n      null\n    ],\n    \"previous_incidents\": [\n      null\n    ],\n    \"threat_concerns\": [\n      null\n    ]\n  }\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Versions",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/profile/versions",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "profile",
+                    "versions"
+                  ],
+                  "variable": []
+                },
+                "description": "List Versions"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Version",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlCmdb}}/profile/versions/{version}",
+                  "host": [
+                    "{{baseUrlCmdb}}"
+                  ],
+                  "path": [
+                    "profile",
+                    "versions",
+                    ":version"
+                  ],
+                  "variable": [
+                    {
+                      "key": "version",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Version"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "flowviz (8008)",
+      "description": "Threat description \u2192 ATT&CK attack flow (nodes & edges)",
+      "item": [
+        {
+          "name": "flows",
+          "item": [
+            {
+              "name": "Generate Flow",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlFlowviz}}/flows",
+                  "host": [
+                    "{{baseUrlFlowviz}}"
+                  ],
+                  "path": [
+                    "flows"
+                  ],
+                  "variable": []
+                },
+                "description": "Generate Flow",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"input\": \"string\",\n  \"system\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Stream Flow",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlFlowviz}}/flows/stream",
+                  "host": [
+                    "{{baseUrlFlowviz}}"
+                  ],
+                  "path": [
+                    "flows",
+                    "stream"
+                  ],
+                  "variable": []
+                },
+                "description": "Returns a Server-Sent Events stream of the raw AI output.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"input\": \"string\",\n  \"system\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Flow",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlFlowviz}}/flows/{flow_id}",
+                  "host": [
+                    "{{baseUrlFlowviz}}"
+                  ],
+                  "path": [
+                    "flows",
+                    ":flow_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "flow_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Flow"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlFlowviz}}/health",
+                  "host": [
+                    "{{baseUrlFlowviz}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "asm (8009)",
+      "description": "Passive attack surface discovery \u2014 cert transparency, passive DNS, Shodan",
+      "item": [
+        {
+          "name": "health",
+          "item": [
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/health/sources",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "jobs",
+          "item": [
+            {
+              "name": "List Jobs",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/jobs",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "jobs"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "status",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Jobs"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Job",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/jobs/{job_id}",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "jobs",
+                    ":job_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "job_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Job"
+              },
+              "response": []
+            },
+            {
+              "name": "List Findings",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/findings",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "findings"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "scope_id",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "offset",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Findings"
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Scan",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/scan/run",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "scan",
+                    "run"
+                  ],
+                  "variable": []
+                },
+                "description": "Trigger Scan"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/health",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "scopes",
+          "item": [
+            {
+              "name": "List Scopes",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/scopes",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "scopes"
+                  ],
+                  "variable": []
+                },
+                "description": "List Scopes"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Scope",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/scopes",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "scopes"
+                  ],
+                  "variable": []
+                },
+                "description": "Create Scope",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"config\": {}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Scope",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/scopes/{scope_id}",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "scopes",
+                    ":scope_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "scope_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Scope"
+              },
+              "response": []
+            },
+            {
+              "name": "Update Scope",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/scopes/{scope_id}",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "scopes",
+                    ":scope_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "scope_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Update Scope",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"config\": {}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Scope",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/scopes/{scope_id}",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "scopes",
+                    ":scope_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "scope_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Delete Scope"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "targets",
+          "item": [
+            {
+              "name": "List Targets",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/targets",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "targets"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "scope_id",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "type",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Targets"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Target",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/targets",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "targets"
+                  ],
+                  "variable": []
+                },
+                "description": "Create Target",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"scope_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"type\": \"string\",\n  \"value\": \"string\",\n  \"description\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Target",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlAsm}}/targets/{target_id}",
+                  "host": [
+                    "{{baseUrlAsm}}"
+                  ],
+                  "path": [
+                    "targets",
+                    ":target_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "target_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Delete Target"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "domainwatch (8010)",
+      "description": "Periodic domain monitoring \u2014 DNS, content hash, screenshots, IOC lookup",
+      "item": [
+        {
+          "name": "check",
+          "item": [
+            {
+              "name": "Trigger Check",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/check/run",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "check",
+                    "run"
+                  ],
+                  "variable": []
+                },
+                "description": "Trigger Check"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "domains",
+          "item": [
+            {
+              "name": "List Domains",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains"
+                  ],
+                  "variable": []
+                },
+                "description": "List Domains"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Domain",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains"
+                  ],
+                  "variable": []
+                },
+                "description": "Create Domain",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Domain",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains/{domain_id}",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains",
+                    ":domain_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "domain_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Delete Domain"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Domain",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains/{domain_id}",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains",
+                    ":domain_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "domain_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Domain"
+              },
+              "response": []
+            },
+            {
+              "name": "List Snapshots",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains/{domain_id}/snapshots",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains",
+                    ":domain_id",
+                    "snapshots"
+                  ],
+                  "variable": [
+                    {
+                      "key": "domain_id",
+                      "value": ""
+                    }
+                  ],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Snapshots"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Snapshot",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains/{domain_id}/snapshots/{snapshot_id}",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains",
+                    ":domain_id",
+                    "snapshots",
+                    ":snapshot_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "domain_id",
+                      "value": ""
+                    },
+                    {
+                      "key": "snapshot_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Snapshot"
+              },
+              "response": []
+            },
+            {
+              "name": "List Changes",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains/{domain_id}/changes",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains",
+                    ":domain_id",
+                    "changes"
+                  ],
+                  "variable": [
+                    {
+                      "key": "domain_id",
+                      "value": ""
+                    }
+                  ],
+                  "query": [
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Changes"
+              },
+              "response": []
+            },
+            {
+              "name": "Latest Screenshot",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains/{domain_id}/screenshot",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains",
+                    ":domain_id",
+                    "screenshot"
+                  ],
+                  "variable": [
+                    {
+                      "key": "domain_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Latest Screenshot"
+              },
+              "response": []
+            },
+            {
+              "name": "Manual Check",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/domains/{domain_id}/check",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "domains",
+                    ":domain_id",
+                    "check"
+                  ],
+                  "variable": [
+                    {
+                      "key": "domain_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Manual Check"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "health",
+          "item": [
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/health/sources",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlDomainwatch}}/health",
+                  "host": [
+                    "{{baseUrlDomainwatch}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "scheduler (8011)",
+      "description": "Central job scheduler \u2014 fires HTTP triggers to all platform services",
+      "item": [
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlScheduler}}/health",
+                  "host": [
+                    "{{baseUrlScheduler}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "scheduler",
+          "item": [
+            {
+              "name": "List Jobs",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlScheduler}}/jobs",
+                  "host": [
+                    "{{baseUrlScheduler}}"
+                  ],
+                  "path": [
+                    "jobs"
+                  ],
+                  "variable": []
+                },
+                "description": "List Jobs"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Job",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlScheduler}}/jobs/{job_id}",
+                  "host": [
+                    "{{baseUrlScheduler}}"
+                  ],
+                  "path": [
+                    "jobs",
+                    ":job_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "job_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Job"
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Job",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlScheduler}}/jobs/{job_id}/trigger",
+                  "host": [
+                    "{{baseUrlScheduler}}"
+                  ],
+                  "path": [
+                    "jobs",
+                    ":job_id",
+                    "trigger"
+                  ],
+                  "variable": [
+                    {
+                      "key": "job_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Trigger Job"
+              },
+              "response": []
+            },
+            {
+              "name": "List Runs",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlScheduler}}/runs",
+                  "host": [
+                    "{{baseUrlScheduler}}"
+                  ],
+                  "path": [
+                    "runs"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "job_id",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "status",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Runs"
+              },
+              "response": []
+            },
+            {
+              "name": "Complete Run Callback",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlScheduler}}/internal/runs/{run_id}/complete",
+                  "host": [
+                    "{{baseUrlScheduler}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "runs",
+                    ":run_id",
+                    "complete"
+                  ],
+                  "variable": [
+                    {
+                      "key": "run_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Called by slow jobs to report completion.",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"status\": \"success\",\n  \"error\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "secrets (8012)",
+      "description": "Fernet-encrypted credential vault with access logging",
+      "item": [
+        {
+          "name": "bootstrap",
+          "item": [
+            {
+              "name": "Bootstrap Fetch",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlSecrets}}/internal/bootstrap-fetch",
+                  "host": [
+                    "{{baseUrlSecrets}}"
+                  ],
+                  "path": [
+                    "internal",
+                    "bootstrap-fetch"
+                  ],
+                  "variable": []
+                },
+                "description": "Validates the service's bootstrap token then returns the requested secret(s).\n\nTwo modes:\n- body.secret_name provided \u2192 single-secret mode: returns {\"value\": \"<plaintext>\"}\n- body.secret_name absent  \u2192 bulk mode (auth only): returns RS256 keypair dict",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"service_name\": \"string\",\n  \"bootstrap_token\": \"string\",\n  \"secret_name\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlSecrets}}/health",
+                  "host": [
+                    "{{baseUrlSecrets}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "secrets",
+          "item": [
+            {
+              "name": "List Secrets",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlSecrets}}/secrets",
+                  "host": [
+                    "{{baseUrlSecrets}}"
+                  ],
+                  "path": [
+                    "secrets"
+                  ],
+                  "variable": []
+                },
+                "description": "List Secrets"
+              },
+              "response": []
+            },
+            {
+              "name": "Create Or Update Secret",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlSecrets}}/secrets",
+                  "host": [
+                    "{{baseUrlSecrets}}"
+                  ],
+                  "path": [
+                    "secrets"
+                  ],
+                  "variable": []
+                },
+                "description": "Create Or Update Secret",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"string\",\n  \"value\": \"string\",\n  \"metadata\": {}\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Get Secret",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlSecrets}}/secrets/{name}",
+                  "host": [
+                    "{{baseUrlSecrets}}"
+                  ],
+                  "path": [
+                    "secrets",
+                    ":name"
+                  ],
+                  "variable": [
+                    {
+                      "key": "name",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Secret"
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Secret",
+              "request": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlSecrets}}/secrets/{name}",
+                  "host": [
+                    "{{baseUrlSecrets}}"
+                  ],
+                  "path": [
+                    "secrets",
+                    ":name"
+                  ],
+                  "variable": [
+                    {
+                      "key": "name",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Delete Secret"
+              },
+              "response": []
+            },
+            {
+              "name": "Rotate Secret",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlSecrets}}/secrets/{name}/rotate",
+                  "host": [
+                    "{{baseUrlSecrets}}"
+                  ],
+                  "path": [
+                    "secrets",
+                    ":name",
+                    "rotate"
+                  ],
+                  "variable": [
+                    {
+                      "key": "name",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Rotate Secret",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"new_value\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "indicator-intel (8013)",
+      "description": "AI-driven passive investigation of IPs and domains",
+      "item": [
+        {
+          "name": "health",
+          "item": [
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIndicatorintel}}/health/sources",
+                  "host": [
+                    "{{baseUrlIndicatorintel}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "investigations",
+          "item": [
+            {
+              "name": "Investigate",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIndicatorintel}}/investigate",
+                  "host": [
+                    "{{baseUrlIndicatorintel}}"
+                  ],
+                  "path": [
+                    "investigate"
+                  ],
+                  "variable": []
+                },
+                "description": "Investigate",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"string\",\n  \"value\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "Investigate Async",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIndicatorintel}}/investigate/async",
+                  "host": [
+                    "{{baseUrlIndicatorintel}}"
+                  ],
+                  "path": [
+                    "investigate",
+                    "async"
+                  ],
+                  "variable": []
+                },
+                "description": "Investigate Async",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"type\": \"string\",\n  \"value\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Investigations",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIndicatorintel}}/investigations",
+                  "host": [
+                    "{{baseUrlIndicatorintel}}"
+                  ],
+                  "path": [
+                    "investigations"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "value",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page_size",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Investigations"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Investigation",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIndicatorintel}}/investigations/{investigation_id}",
+                  "host": [
+                    "{{baseUrlIndicatorintel}}"
+                  ],
+                  "path": [
+                    "investigations",
+                    ":investigation_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "investigation_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Investigation"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlIndicatorintel}}/health",
+                  "host": [
+                    "{{baseUrlIndicatorintel}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "orchestrator (8014)",
+      "description": "AI intelligence synthesis \u2014 CVE relevance, actor likelihood, correlations, executive briefs",
+      "item": [
+        {
+          "name": "analyze",
+          "item": [
+            {
+              "name": "Trigger Analysis",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/analyze",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "analyze"
+                  ],
+                  "variable": []
+                },
+                "description": "Trigger Analysis"
+              },
+              "response": []
+            },
+            {
+              "name": "Trigger Geo",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/analyze/geo",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "analyze",
+                    "geo"
+                  ],
+                  "variable": []
+                },
+                "description": "Trigger Geo"
+              },
+              "response": []
+            },
+            {
+              "name": "Ask",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/ask",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "ask"
+                  ],
+                  "variable": []
+                },
+                "description": "Ask",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"question\": \"string\",\n  \"cve_id\": \"string\",\n  \"ioc\": \"string\",\n  \"actor\": \"string\",\n  \"text\": \"string\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                }
+              },
+              "response": []
+            },
+            {
+              "name": "List Reports",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/reports",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "reports"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "kind",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "page_size",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "List Reports"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Report",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/reports/{report_id}",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "reports",
+                    ":report_id"
+                  ],
+                  "variable": [
+                    {
+                      "key": "report_id",
+                      "value": ""
+                    }
+                  ]
+                },
+                "description": "Get Report"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Cve Relevance",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/relevance/cves",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "relevance",
+                    "cves"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get Cve Relevance"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Actor Likelihood",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/relevance/actors",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "relevance",
+                    "actors"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get Actor Likelihood"
+              },
+              "response": []
+            },
+            {
+              "name": "Get Correlations",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/correlations",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "correlations"
+                  ],
+                  "variable": [],
+                  "query": [
+                    {
+                      "key": "since",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    },
+                    {
+                      "key": "limit",
+                      "value": "",
+                      "description": "",
+                      "disabled": true
+                    }
+                  ]
+                },
+                "description": "Get Correlations"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "health",
+          "item": [
+            {
+              "name": "Source Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/health/sources",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "health",
+                    "sources"
+                  ],
+                  "variable": []
+                },
+                "description": "Source Health"
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "meta",
+          "item": [
+            {
+              "name": "Health",
+              "request": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{accessToken}}",
+                    "type": "text"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrlOrchestrator}}/health",
+                  "host": [
+                    "{{baseUrlOrchestrator}}"
+                  ],
+                  "path": [
+                    "health"
+                  ],
+                  "variable": []
+                },
+                "description": "Health"
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "authUrl",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin",
+      "type": "string"
+    },
+    {
+      "key": "adminPassword",
+      "value": "changeme",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlAuth",
+      "value": "http://localhost:8000",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlNewscollector",
+      "value": "http://localhost:8001",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlVulnintel",
+      "value": "http://localhost:8002",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlThreatintel",
+      "value": "http://localhost:8003",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlIoccollector",
+      "value": "http://localhost:8004",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlThreatactors",
+      "value": "http://localhost:8005",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlIntegrations",
+      "value": "http://localhost:8006",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlCmdb",
+      "value": "http://localhost:8007",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlFlowviz",
+      "value": "http://localhost:8008",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlAsm",
+      "value": "http://localhost:8009",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlDomainwatch",
+      "value": "http://localhost:8010",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlScheduler",
+      "value": "http://localhost:8011",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlSecrets",
+      "value": "http://localhost:8012",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlIndicatorintel",
+      "value": "http://localhost:8013",
+      "type": "string"
+    },
+    {
+      "key": "baseUrlOrchestrator",
+      "value": "http://localhost:8014",
+      "type": "string"
+    }
+  ]
+}

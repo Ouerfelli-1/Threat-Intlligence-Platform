@@ -1,0 +1,17 @@
+[project]
+name = "tip-cmdb"
+version = "0.1.0"
+description = "Asset inventory + versioned company profile"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "python-multipart>=0.0.9",
+    "tip-common @ file:///app/packages/tip_common",
+    "tip-auth @ file:///app/packages/tip_auth",
+    "tip-db @ file:///app/packages/tip_db",
+    "tip-schemas @ file:///app/packages/tip_schemas",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

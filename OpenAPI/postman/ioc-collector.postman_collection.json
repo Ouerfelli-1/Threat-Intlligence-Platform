@@ -1,0 +1,248 @@
+{
+  "info": {
+    "_postman_id": "748af44f-c0a0-4836-8a06-7bd9eb3efd36",
+    "name": "TIP \u2014 ioc-collector",
+    "description": "IOC ingestion + bulk lookup",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "indicators",
+      "item": [
+        {
+          "name": "List Indicators",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/indicators",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "indicators"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "value",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "min_confidence",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Indicators"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Indicator",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/indicators/{indicator_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "indicators",
+                ":indicator_id"
+              ],
+              "variable": [
+                {
+                  "key": "indicator_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Indicator"
+          },
+          "response": []
+        },
+        {
+          "name": "Lookup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/indicators/lookup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "indicators",
+                "lookup"
+              ],
+              "variable": []
+            },
+            "description": "Lookup",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"indicators\": [\n    {}\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "ingest",
+      "item": [
+        {
+          "name": "Run Ingest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingest/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                "run"
+              ],
+              "variable": []
+            },
+            "description": "Run Ingest"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        },
+        {
+          "name": "Source Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "sources"
+              ],
+              "variable": []
+            },
+            "description": "Source Health"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8004",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

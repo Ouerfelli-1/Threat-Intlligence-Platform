@@ -1,0 +1,290 @@
+{
+  "info": {
+    "_postman_id": "322a7f59-0037-4cf8-8c7d-11b6a7c71d36",
+    "name": "TIP \u2014 threat-intel",
+    "description": "Supply chain threats, HIBP breaches, public disclosures",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "Source Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "sources"
+              ],
+              "variable": []
+            },
+            "description": "Source Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "ingest",
+      "item": [
+        {
+          "name": "Trigger Ingest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingest/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                "run"
+              ],
+              "variable": []
+            },
+            "description": "Trigger Ingest"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "threats",
+      "item": [
+        {
+          "name": "List Threats",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/threats",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "threats"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "severity",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Threats"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Threat",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/threats/{threat_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "threats",
+                ":threat_id"
+              ],
+              "variable": [
+                {
+                  "key": "threat_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Threat"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Threat Insight",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/threats/{threat_id}/insight",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "threats",
+                ":threat_id",
+                "insight"
+              ],
+              "variable": [
+                {
+                  "key": "threat_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Threat Insight"
+          },
+          "response": []
+        },
+        {
+          "name": "List Breaches",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/hibp-breaches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "hibp-breaches"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "is_verified",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Breaches"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8003",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

@@ -1,0 +1,99 @@
+# ──────────────────────────────────────────────────────
+# docker-compose.tip.yml
+# Threat Intelligence Platform stack
+#
+# Usage:
+#   docker compose -f docker-compose.tip.yml up -d
+#
+# This is kept separate from the main docker-compose.yml
+# to avoid breaking the existing recon platform.
+# ──────────────────────────────────────────────────────
+version: "3.9"
+
+services:
+
+  # ── TIP PostgreSQL ───────────────────────────────────
+  tip-postgres:
+    image: postgres:16-alpine
+    container_name: tip-postgres
+    environment:
+      POSTGRES_DB: tip_db
+      POSTGRES_USER: tip_user
+      POSTGRES_PASSWORD: tip_password
+    ports:
+      - "5433:5432"
+    volumes:
+      - tip_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tip_user -d tip_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - tip_net
+
+  # ── TIP REST API ─────────────────────────────────────
+  tip-api:
+    build:
+      context: ./tip
+      dockerfile: Dockerfile.api
+    container_name: tip-api
+    depends_on:
+      tip-postgres:
+        condition: service_healthy
+    environment:
+      TIP_DB_HOST: tip-postgres
+      TIP_DB_PORT: 5432
+      TIP_DB_NAME: tip_db
+      TIP_DB_USER: tip_user
+      TIP_DB_PASSWORD: tip_password
+      LEAK_API_URL: http://tip-leak-api:8081
+      RECON_FINDINGS_API_URL: http://findings:8001
+      # Wazuh / MISP / OpenCTI configured via .env or defaults
+    ports:
+      - "8002:8002"
+    networks:
+      - tip_net
+      - default          # share network with existing recon containers
+
+  # ── TIP Scheduler ────────────────────────────────────
+  tip-scheduler:
+    build:
+      context: ./tip
+      dockerfile: Dockerfile.scheduler
+    container_name: tip-scheduler
+    depends_on:
+      tip-postgres:
+        condition: service_healthy
+    environment:
+      TIP_DB_HOST: tip-postgres
+      TIP_DB_PORT: 5432
+      TIP_DB_NAME: tip_db
+      TIP_DB_USER: tip_user
+      TIP_DB_PASSWORD: tip_password
+      LEAK_API_URL: http://tip-leak-api:8081
+      RECON_FINDINGS_API_URL: http://findings:8001
+    networks:
+      - tip_net
+      - default
+
+  # ── Dummy Leak API ───────────────────────────────────
+  tip-leak-api:
+    build:
+      context: ./tip
+      dockerfile: Dockerfile.leak
+    container_name: tip-leak-api
+    ports:
+      - "8081:8081"
+    networks:
+      - tip_net
+
+volumes:
+  tip_pgdata:
+
+networks:
+  tip_net:
+    driver: bridge
+  default:
+    external: true
+    name: miniproj-main_default   # existing recon docker network

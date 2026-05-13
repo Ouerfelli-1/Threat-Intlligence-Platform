@@ -1,0 +1,525 @@
+{
+  "info": {
+    "_postman_id": "119277fe-9321-4dfa-b588-599e3863e4a4",
+    "name": "TIP \u2014 asm",
+    "description": "Passive attack surface discovery \u2014 cert transparency, passive DNS, Shodan",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "Source Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "sources"
+              ],
+              "variable": []
+            },
+            "description": "Source Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "jobs",
+      "item": [
+        {
+          "name": "List Jobs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/jobs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "jobs"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Jobs"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Job",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/jobs/{job_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "jobs",
+                ":job_id"
+              ],
+              "variable": [
+                {
+                  "key": "job_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Job"
+          },
+          "response": []
+        },
+        {
+          "name": "List Findings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/findings",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "findings"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "scope_id",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Findings"
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Scan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/scan/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "scan",
+                "run"
+              ],
+              "variable": []
+            },
+            "description": "Trigger Scan"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "scopes",
+      "item": [
+        {
+          "name": "List Scopes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/scopes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "scopes"
+              ],
+              "variable": []
+            },
+            "description": "List Scopes"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Scope",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/scopes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "scopes"
+              ],
+              "variable": []
+            },
+            "description": "Create Scope",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"config\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Scope",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/scopes/{scope_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "scopes",
+                ":scope_id"
+              ],
+              "variable": [
+                {
+                  "key": "scope_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Scope"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Scope",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/scopes/{scope_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "scopes",
+                ":scope_id"
+              ],
+              "variable": [
+                {
+                  "key": "scope_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update Scope",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"description\": \"string\",\n  \"config\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Scope",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/scopes/{scope_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "scopes",
+                ":scope_id"
+              ],
+              "variable": [
+                {
+                  "key": "scope_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete Scope"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "targets",
+      "item": [
+        {
+          "name": "List Targets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/targets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "targets"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "scope_id",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Targets"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Target",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/targets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "targets"
+              ],
+              "variable": []
+            },
+            "description": "Create Target",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scope_id\": \"00000000-0000-0000-0000-000000000000\",\n  \"type\": \"string\",\n  \"value\": \"string\",\n  \"description\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Target",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/targets/{target_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "targets",
+                ":target_id"
+              ],
+              "variable": [
+                {
+                  "key": "target_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete Target"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8009",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

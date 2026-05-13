@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.venv/
+ProdVenv/
+
+# Secrets & local config
+config.json
+
+# Database & runtime data
+data/app.db
+data/app.db-wal
+data/app.db-shm
+data/screenshots/*.png
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Test artifacts
+_e2e_test.py
+_edge_case_test.py
+_verify_security.py

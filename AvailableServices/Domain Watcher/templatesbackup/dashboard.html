@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>DomainWatch</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:#0b0e14;color:#c9d1d9;font-size:14px;height:100vh;overflow:hidden}
+a{color:#58a6ff;text-decoration:none}
+
+/* layout */
+.shell{display:flex;height:100vh}
+.sidebar{width:340px;min-width:340px;border-right:1px solid #21262d;display:flex;flex-direction:column;background:#0d1117}
+.main{flex:1;overflow-y:auto;background:#0b0e14}
+
+/* sidebar header */
+.sb-head{padding:16px;border-bottom:1px solid #21262d}
+.sb-head h1{font-size:15px;font-weight:700;color:#e6edf3;letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px}
+.sb-head .user-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#8b949e}
+.sb-head .user-row a{font-size:12px;color:#8b949e;padding:4px 8px;border:1px solid #30363d;background:#161b22}
+.sb-head .user-row a:hover{color:#e6edf3;border-color:#58a6ff}
+
+/* add form */
+.add-row{display:flex;flex-wrap:wrap;gap:6px;padding:12px 16px;border-bottom:1px solid #21262d}
+.add-row input,.add-row select{padding:7px 10px;background:#161b22;border:1px solid #30363d;color:#c9d1d9;font-size:13px;outline:none}
+.add-row input:focus,.add-row select:focus{border-color:#58a6ff}
+.add-row select{min-width:80px}
+.add-row select option{background:#161b22;color:#c9d1d9}
+.add-row button{padding:7px 14px;background:#238636;color:#fff;border:none;font-size:13px;font-weight:600;cursor:pointer}
+.add-row button:hover{background:#2ea043}
+
+/* domain list */
+.domain-list{flex:1;overflow-y:auto}
+.d-item{display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid #21262d;cursor:pointer;transition:background .1s}
+.d-item:hover,.d-item.active{background:#161b22}
+.d-item .info{flex:1;min-width:0}
+.d-item .name{font-size:14px;font-weight:600;color:#e6edf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.d-item .meta{font-size:11px;color:#8b949e;margin-top:2px;line-height:1.5}
+.d-item .meta .src-tag{display:inline-block;padding:1px 5px;font-size:10px;font-weight:600;color:#58a6ff;border:1px solid #1f3a5f;background:#0d1f3c;margin-left:4px;text-transform:uppercase;letter-spacing:.3px}
+.d-item .right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+
+/* badges */
+.badge{display:inline-block;padding:2px 8px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.3px}
+.badge-active{background:#0d3321;color:#3fb950;border:1px solid #238636}
+.badge-inactive{background:#3d1f1f;color:#f85149;border:1px solid #da3633}
+.badge-unknown{background:#1c1e24;color:#8b949e;border:1px solid #30363d}
+
+/* spinner */
+.spinner{width:14px;height:14px;border:2px solid #30363d;border-top-color:#58a6ff;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* delete / archive */
+.act-btn{width:24px;height:24px;display:flex;align-items:center;justify-content:center;background:none;border:1px solid transparent;color:#8b949e;cursor:pointer;font-size:16px}
+.act-btn:hover{color:#f85149;border-color:#da3633;background:#3d1f1f}
+.act-btn.restore:hover{color:#3fb950;border-color:#238636;background:#1a3a2a}
+
+/* tabs */
+.tab-row{display:flex;gap:0;border-bottom:1px solid #21262d;margin:0 12px}
+.tab-btn{flex:1;padding:8px 0;text-align:center;font-size:12px;font-weight:700;letter-spacing:.5px;color:#484f58;background:none;border:none;border-bottom:2px solid transparent;cursor:pointer}
+.tab-btn.active{color:#c9d1d9;border-bottom-color:#58a6ff}
+.tab-btn:hover{color:#8b949e}
+
+/* main panel */
+.empty-main{display:flex;align-items:center;justify-content:center;height:100%;color:#484f58;font-size:15px}
+.panel{padding:24px 32px;max-width:960px}
+.panel-head{display:flex;align-items:baseline;gap:12px;margin-bottom:20px;border-bottom:1px solid #21262d;padding-bottom:16px}
+.panel-head h2{font-size:20px;font-weight:700;color:#e6edf3}
+.panel-head .case{font-size:12px;color:#58a6ff;font-weight:600}
+
+/* sections */
+.section{margin-bottom:24px}
+.section-title{font-size:12px;font-weight:700;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #21262d}
+
+/* info table */
+.info-tbl{width:100%;border-collapse:collapse}
+.info-tbl td{padding:6px 0;font-size:13px;vertical-align:top}
+.info-tbl td:first-child{width:130px;color:#8b949e;font-weight:600}
+.info-tbl td:last-child{color:#c9d1d9}
+.info-tbl .ns-ips{display:block;font-size:11px;color:#6e7681;font-family:monospace;margin-top:1px;padding-left:12px}
+
+/* grid */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+
+/* screenshot */
+.screenshot img{max-width:100%;border:1px solid #21262d}
+.screenshot .empty{color:#484f58;font-style:italic;padding:24px 0;text-align:center;border:1px dashed #21262d}
+
+/* ioc table */
+.ioc-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.ioc-tbl th{text-align:left;padding:6px 8px;color:#8b949e;font-weight:600;border-bottom:1px solid #21262d}
+.ioc-tbl td{padding:5px 8px;border-bottom:1px solid #161b22;font-family:monospace;word-break:break-all;color:#c9d1d9}
+.ioc-tbl .type-cell{font-family:inherit;text-transform:uppercase;font-weight:700;font-size:10px;color:#8b949e;width:60px}
+.ioc-tbl .date-cell{font-family:inherit;font-size:11px;color:#484f58;white-space:nowrap;width:80px}
+.ioc-wrap{max-height:240px;overflow-y:auto}
+
+/* subdomain list */
+.sub-list{max-height:200px;overflow-y:auto;list-style:none}
+.sub-list li{padding:4px 0;font-size:12px;font-family:monospace;color:#c9d1d9;border-bottom:1px solid #161b22}
+.sub-list li span{font-family:inherit;font-size:11px;color:#484f58;margin-left:8px}
+
+/* stat */
+.stat-row{display:flex;gap:16px;margin-bottom:12px}
+.stat-box{padding:10px 16px;border:1px solid #21262d;background:#161b22;text-align:center;min-width:80px}
+.stat-num{font-size:24px;font-weight:800;color:#c9d1d9}
+.stat-lbl{font-size:10px;color:#8b949e;text-transform:uppercase;letter-spacing:.5px}
+
+/* timeline */
+.tl{list-style:none}
+.tl li{padding:10px 0 10px 20px;border-left:2px solid #21262d;position:relative;margin-left:6px}
+.tl li::before{content:'';position:absolute;left:-5px;top:14px;width:8px;height:8px;background:#30363d}
+.tl li.initial_entry::before,.tl li.new_detection::before{background:#238636}
+.tl li.records_changed::before{background:#da3633}
+.tl li.content_changed::before{background:#d29922}
+.tl li.new_iocs::before{background:#8957e5}
+.tl li.new_subdomains::before{background:#13a0a0}
+.tl .ev-type{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.3px}
+.tl .ev-type.initial_entry,.tl .ev-type.new_detection{color:#3fb950}
+.tl .ev-type.records_changed{color:#f85149}
+.tl .ev-type.content_changed{color:#d29922}
+.tl .ev-type.new_iocs{color:#a371f7}
+.tl .ev-type.new_subdomains{color:#3fb8af}
+.tl .ev-time{font-size:11px;color:#484f58;margin-left:8px}
+.tl .ev-detail{font-size:12px;color:#8b949e;margin-top:4px;line-height:1.6}
+.tl .ev-detail ul{margin:2px 0 0 16px;padding:0;list-style:disc}
+.tl .ev-detail li{margin-bottom:1px;font-family:monospace;font-size:11px;border:none;padding:0}
+.tl .diff-old{text-decoration:line-through;color:#f85149}
+.tl .diff-new{color:#3fb950;font-weight:600}
+.tl .lbl{font-weight:600;color:#8b949e}
+
+/* empty */
+.empty-text{color:#484f58;font-style:italic;font-size:13px;padding:8px 0}
+</style>
+</head>
+<body>
+<div class="shell">
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-head">
+      <h1>DomainWatch</h1>
+      <div class="user-row">
+        <span>{{ username }}</span>
+        <a href="/logout">Logout</a>
+      </div>
+    </div>
+    <form class="add-row" action="/domains/add" method="post" id="addForm">
+      <input type="text" name="name" placeholder="domain.com" required style="flex:1"/>
+      <input type="text" name="case_id" placeholder="Case ID" style="max-width:90px"/>
+      <select name="source_id">
+        <option value="">Source</option>
+        {% for src in sources %}
+        <option value="{{ src['id'] }}">{{ src['name'] }}</option>
+        {% endfor %}
+      </select>
+      <button type="submit">+</button>
+    </form>
+    <div class="tab-row">
+      <button class="tab-btn active" data-tab="active" onclick="switchTab('active')">ACTIVE</button>
+      <button class="tab-btn" data-tab="archived" onclick="switchTab('archived')">ARCHIVED</button>
+    </div>
+    <div class="domain-list" id="domainList">
+      {% for domain in domains %}
+      <div class="d-item{% if domain['archived'] %} d-archived{% endif %}" data-id="{{ domain['id'] }}" data-archived="{{ domain['archived'] or 0 }}" onclick="loadDomain({{ domain['id'] }})" {% if domain['archived'] %}style="display:none"{% endif %}>
+        <div class="info">
+          <div class="name">{{ domain["name"] }}</div>
+          <div class="meta">
+            {% if domain["case_id"] %}Case: {{ domain["case_id"] }}<br>{% endif %}
+            {% if domain["source_name"] %}{{ domain["source_name"] }} &middot; {% endif %}
+            {% if domain["added_by"] %}: {{ domain["added_by"] }} &middot; {% endif %}<br>
+            Added: {{ domain["created_at"][:10] if domain["created_at"] else "N/A" }} &middot;<br>
+            Checked: {{ domain["last_checked"][:16] if domain["last_checked"] else "pending" }}
+          </div>
+        </div>
+        <div class="right">
+          {% if domain["status"] not in ("active","inactive") %}
+            <span class="spinner" id="spin-{{ domain['id'] }}"></span>
+            <span class="badge badge-unknown">Loading</span>
+          {% elif domain["status"] == "active" %}
+            <span class="badge badge-active">Active</span>
+          {% else %}
+            <span class="badge badge-inactive">Inactive</span>
+          {% endif %}
+          <form action="/domains/{% if domain['archived'] %}restore{% else %}archive{% endif %}/{{ domain['id'] }}" method="post" style="display:inline" onclick="event.stopPropagation()">
+            <button class="act-btn{% if domain['archived'] %} restore{% endif %}" type="submit" title="{% if domain['archived'] %}Restore{% else %}Archive{% endif %}">{% if domain['archived'] %}&#x21bb;{% else %}&times;{% endif %}</button>
+          </form>
+        </div>
+      </div>
+      {% endfor %}
+      {% if not domains %}
+        <div style="padding:24px;text-align:center;color:#484f58">No domains yet</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main" id="mainPanel">
+    <div class="empty-main" id="emptyMain">Select a domain to view details</div>
+    <div class="panel" id="detailPanel" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+var _activeDomain = null;
+var _pollTimer = null;
+var _wasLoading = false;
+var _currentTab = 'active';
+
+function switchTab(tab){
+  _currentTab = tab;
+  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.toggle('active',b.dataset.tab===tab)});
+  document.querySelectorAll('.d-item').forEach(function(el){
+    var isArchived = el.dataset.archived === '1';
+    el.style.display = (tab==='active' && !isArchived)||(tab==='archived' && isArchived) ? '' : 'none';
+  });
+}
+
+function loadDomain(id) {
+  document.querySelectorAll('.d-item').forEach(function(el){el.classList.remove('active')});
+  var item = document.querySelector('.d-item[data-id="'+id+'"]');
+  if(item) item.classList.add('active');
+  _activeDomain = id;
+
+  fetch('/api/domains/'+id)
+    .then(function(r){return r.json()})
+    .then(function(data){renderDetail(data)})
+    .catch(function(e){console.error(e)});
+}
+
+function esc(s){
+  if(s==null) return '';
+  var d=document.createElement('div');d.textContent=String(s);return d.innerHTML;
+}
+
+function renderDetail(data){
+  var d=data.domain, det=data.details||{}, hist=data.history||[], subs=data.subdomains||[], iocs=data.iocs||[];
+  document.getElementById('emptyMain').style.display='none';
+  var p=document.getElementById('detailPanel');
+  p.style.display='block';
+
+  var statusBadge='';
+  if(d.status==='active') statusBadge='<span class="badge badge-active">Active</span>';
+  else if(d.status==='inactive') statusBadge='<span class="badge badge-inactive">Inactive</span>';
+  else statusBadge='<span class="badge badge-unknown">'+esc(d.status)+'</span>';
+
+  var h='<div class="panel-head"><h2>'+esc(d.name)+'</h2>'+statusBadge;
+  if(d.source_name) h+='<span class="badge" style="background:#0d1f3c;color:#58a6ff;border:1px solid #1f3a5f">'+esc(d.source_name)+'</span>';
+  if(d.case_id) h+='<span class="case">Case: '+esc(d.case_id)+'</span>';
+  if(d.added_by) h+='<span class="case">Added by: '+esc(d.added_by)+'</span>';
+  if(d.archived){
+    h+='<span class="badge" style="background:#3d1f1f;color:#f85149;border:1px solid #da3633">Archived</span>';
+    h+='<form action="/domains/restore/'+d.id+'" method="post" style="display:inline;margin-left:auto"><button class="act-btn restore" type="submit" title="Restore to active watch">&#x21bb;</button></form>';
+  } else {
+    h+='<form action="/domains/archive/'+d.id+'" method="post" style="display:inline;margin-left:auto"><button class="act-btn" type="submit" title="Archive domain">&times;</button></form>';
+  }
+  h+='</div>';
+
+  // grid: intel + screenshot
+  h+='<div class="grid2">';
+
+  // intel
+  h+='<div class="section"><div class="section-title">Domain Intelligence</div>';
+  if(det.domain){
+    h+='<table class="info-tbl">';
+    h+=infoRow('Registrar',det.registrar);
+    h+=infoRow('Status',(det.status||[]).join(', '));
+    h+=infoRow('Created',det.creation_date);
+    h+=infoRow('Updated',det.updated_date);
+    h+=infoRow('Expires',det.expiration_date);
+    var ipv4=(det.main_ips||{}).ipv4||[], ipv6=(det.main_ips||{}).ipv6||[];
+    h+=infoRow('IPv4',ipv4.join(', ')||'None');
+    h+=infoRow('IPv6',ipv6.join(', ')||'None');
+    // NS with IPs
+    var nsHtml='';
+    (det.nameservers||[]).forEach(function(ns){
+      nsHtml+=esc(ns.host||'');
+      var nips=((ns.ips||{}).ipv4||[]).concat((ns.ips||{}).ipv6||[]);
+      if(nips.length) nsHtml+='<span class="ns-ips">'+esc(nips.join(', '))+'</span>';
+      nsHtml+='<br>';
+    });
+    h+=infoRow('Nameservers',nsHtml,true);
+    var mxHtml='';
+    (det.mx_records||[]).forEach(function(mx){
+      mxHtml+=esc(mx.host||'N/A')+' (pri '+esc(mx.priority)+')' + '<br>';
+    });
+    h+=infoRow('MX Records',mxHtml,true);
+    h+='</table>';
+  } else {
+    h+='<div class="empty-text">Waiting for first check</div>';
+  }
+  h+='</div>';
+
+  // screenshot
+  h+='<div class="section"><div class="section-title">Screenshot</div><div class="screenshot">';
+  if(data.screenshot_url) h+='<img src="'+esc(data.screenshot_url)+'" alt="screenshot"/>';
+  else h+='<div class="empty">No screenshot</div>';
+  h+='</div></div>';
+
+  h+='</div>'; // grid2
+
+  // stats row + iocs + subdomains grid
+  h+='<div class="grid2">';
+
+  // IOCs
+  h+='<div class="section"><div class="section-title">IOCs ('+iocs.length+')</div>';
+  h+='<div class="stat-row"><div class="stat-box"><div class="stat-num">'+iocs.length+'</div><div class="stat-lbl">Indicators</div></div></div>';
+  if(iocs.length){
+    h+='<div class="ioc-wrap"><table class="ioc-tbl"><thead><tr><th>Type</th><th>Value</th><th>Seen</th></tr></thead><tbody>';
+    iocs.forEach(function(i){
+      h+='<tr><td class="type-cell">'+esc(i.ioc_type)+'</td><td>'+esc(i.ioc_value)+'</td><td class="date-cell">'+esc((i.first_seen_at||'').slice(0,10))+'</td></tr>';
+    });
+    h+='</tbody></table></div>';
+  } else { h+='<div class="empty-text">No IOCs yet</div>'; }
+  h+='</div>';
+
+  // Subdomains
+  h+='<div class="section"><div class="section-title">Subdomains ('+subs.length+')</div>';
+  if(subs.length){
+    h+='<ul class="sub-list">';
+    subs.forEach(function(s){
+      h+='<li>'+esc(s.subdomain)+'<span>'+esc((s.first_seen_at||'').slice(0,10))+'</span></li>';
+    });
+    h+='</ul>';
+  } else { h+='<div class="empty-text">No subdomains yet</div>'; }
+  h+='</div>';
+
+  h+='</div>'; // grid2
+
+  // Timeline
+  h+='<div class="section"><div class="section-title">Timeline</div>';
+  if(hist.length){
+    h+='<ul class="tl">';
+    hist.forEach(function(ev){
+      var ct=ev.change_type;
+      var label=ct;
+      if(ct==='initial_entry'||ct==='new_detection') label='Initial Entry';
+      else if(ct==='records_changed') label='Records Changed';
+      else if(ct==='content_changed') label='Content Changed';
+      else if(ct==='new_iocs') label='New IOCs';
+      else if(ct==='new_subdomains') label='New Subdomains';
+
+      h+='<li class="'+esc(ct)+'">';
+      h+='<span class="ev-type '+esc(ct)+'">'+esc(label)+'</span>';
+      h+='<span class="ev-time">'+esc(ev.changed_at)+'</span>';
+      h+='<div class="ev-detail">';
+      h+=renderEventDetail(ev);
+      h+='</div></li>';
+    });
+    h+='</ul>';
+  } else { h+='<div class="empty-text">No events yet</div>'; }
+  h+='</div>';
+
+  p.innerHTML=h;
+}
+
+function infoRow(label,val,raw){
+  if(!val&&val!==0) val='N/A';
+  return '<tr><td>'+esc(label)+'</td><td>'+(raw?val:esc(val))+'</td></tr>';
+}
+
+function renderEventDetail(ev){
+  var ct=ev.change_type;
+  try{
+    if(ct==='initial_entry'||ct==='new_detection'){
+      var raw=ev.new_value; if(!raw) return '';
+      var d=(typeof raw==='string')?JSON.parse(raw):raw;
+      var out='';
+      if(d.details) out+='<span class="lbl">Domain registered</span><br>';
+      if(d.iocs&&d.iocs.length){
+        out+='<span class="lbl">'+d.iocs.length+' IOC(s):</span><ul>';
+        d.iocs.forEach(function(i){out+='<li>'+i.ioc_type.toUpperCase()+': '+esc(i.ioc_value)+'</li>';});
+        out+='</ul>';
+      }
+      if(d.subdomains&&d.subdomains.length){
+        out+='<span class="lbl">'+d.subdomains.length+' subdomain(s):</span><ul>';
+        d.subdomains.forEach(function(s){out+='<li>'+esc(s)+'</li>';});
+        out+='</ul>';
+      }
+      return out||'<span class="lbl">Initial data captured</span>';
+    }
+    if(ct==='records_changed'){
+      var oldD=(typeof ev.old_value==='string')?JSON.parse(ev.old_value):ev.old_value;
+      var newD=(typeof ev.new_value==='string')?JSON.parse(ev.new_value):ev.new_value;
+      var out='';
+      ['registrar','status','creation_date','expiration_date','updated_date'].forEach(function(f){
+        var ov=JSON.stringify(oldD[f]||'N/A'), nv=JSON.stringify(newD[f]||'N/A');
+        if(ov!==nv) out+='<span class="lbl">'+f.replace(/_/g,' ')+':</span> <span class="diff-old">'+ov.replace(/"/g,'')+'</span> &rarr; <span class="diff-new">'+nv.replace(/"/g,'')+'</span><br>';
+      });
+      var o4=((oldD.main_ips||{}).ipv4||[]).join(', '), n4=((newD.main_ips||{}).ipv4||[]).join(', ');
+      if(o4!==n4) out+='<span class="lbl">IPv4:</span> <span class="diff-old">'+(o4||'None')+'</span> &rarr; <span class="diff-new">'+(n4||'None')+'</span><br>';
+      var o6=((oldD.main_ips||{}).ipv6||[]).join(', '), n6=((newD.main_ips||{}).ipv6||[]).join(', ');
+      if(o6!==n6) out+='<span class="lbl">IPv6:</span> <span class="diff-old">'+(o6||'None')+'</span> &rarr; <span class="diff-new">'+(n6||'None')+'</span><br>';
+      var oNs=(oldD.nameservers||[]).map(function(ns){var h=ns.host||'';var nips=((ns.ips||{}).ipv4||[]).concat((ns.ips||{}).ipv6||[]);return h+(nips.length?' ('+nips.join(', ')+')':'');}).join(', ');
+      var nNs=(newD.nameservers||[]).map(function(ns){var h=ns.host||'';var nips=((ns.ips||{}).ipv4||[]).concat((ns.ips||{}).ipv6||[]);return h+(nips.length?' ('+nips.join(', ')+')':'');}).join(', ');
+      if(oNs!==nNs) out+='<span class="lbl">NS:</span> <span class="diff-old">'+(oNs||'None')+'</span> &rarr; <span class="diff-new">'+(nNs||'None')+'</span><br>';
+      var oMx=(oldD.mx_records||[]).map(function(m){return (m.host||'')+'('+m.priority+')';}).join(', ');
+      var nMx=(newD.mx_records||[]).map(function(m){return (m.host||'')+'('+m.priority+')';}).join(', ');
+      if(oMx!==nMx) out+='<span class="lbl">MX:</span> <span class="diff-old">'+(oMx||'None')+'</span> &rarr; <span class="diff-new">'+(nMx||'None')+'</span><br>';
+      return out||'<span class="lbl">DNS/WHOIS updated</span>';
+    }
+    if(ct==='content_changed'){
+      return '<span class="lbl">Hash:</span> <span class="diff-old">'+esc((ev.old_value||'').slice(0,16))+'&hellip;</span> &rarr; <span class="diff-new">'+esc((ev.new_value||'').slice(0,16))+'&hellip;</span>';
+    }
+    if(ct==='new_iocs'){
+      var arr=(typeof ev.new_value==='string')?JSON.parse(ev.new_value):ev.new_value;
+      var out='<ul>';
+      arr.forEach(function(i){out+='<li>'+i.ioc_type.toUpperCase()+': '+esc(i.ioc_value)+'</li>';});
+      return out+'</ul>';
+    }
+    if(ct==='new_subdomains'){
+      var arr=(typeof ev.new_value==='string')?JSON.parse(ev.new_value):ev.new_value;
+      var out='<ul>';
+      arr.forEach(function(s){out+='<li>'+esc(s)+'</li>';});
+      return out+'</ul>';
+    }
+  }catch(e){}
+  return '';
+}
+
+// Polling for loading domains
+function pollStatus(){
+  fetch('/status/')
+    .then(function(r){return r.json()})
+    .then(function(data){
+      if(data.status!=='idle'){
+        _wasLoading=true;
+      } else if(_wasLoading){
+        if(_pollTimer){clearInterval(_pollTimer);_pollTimer=null;}
+        window.location.reload();
+      }
+    })
+    .catch(function(){});
+}
+if(document.querySelector('.spinner')){
+  _wasLoading=true;
+  _pollTimer=setInterval(pollStatus,2500);
+  pollStatus();
+}
+
+// Add form via AJAX
+document.getElementById('addForm').addEventListener('submit',function(e){
+  e.preventDefault();
+  var fd=new FormData(this);
+  fetch('/domains/add',{method:'POST',body:fd,redirect:'follow'})
+    .then(function(){window.location.reload()})
+    .catch(function(){window.location.reload()});
+});
+</script>
+</body>
+</html>

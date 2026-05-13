@@ -1,0 +1,414 @@
+{
+  "info": {
+    "_postman_id": "4a48f70f-4fae-4e7b-aedf-33817f046740",
+    "name": "TIP \u2014 cmdb",
+    "description": "Asset inventory + versioned company profile",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "assets",
+      "item": [
+        {
+          "name": "List Assets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assets"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "software",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "criticality",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Assets"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Asset",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assets"
+              ],
+              "variable": []
+            },
+            "description": "Create Asset",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hostname\": \"string\",\n  \"ip\": \"string\",\n  \"os\": \"string\",\n  \"software\": {},\n  \"device_type\": \"string\",\n  \"criticality\": \"string\",\n  \"owner\": \"string\",\n  \"location\": \"string\",\n  \"tags\": [\n    \"string\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Asset",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assets/{asset_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assets",
+                ":asset_id"
+              ],
+              "variable": [
+                {
+                  "key": "asset_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Asset"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Asset",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assets/{asset_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assets",
+                ":asset_id"
+              ],
+              "variable": [
+                {
+                  "key": "asset_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update Asset",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hostname\": \"string\",\n  \"ip\": \"string\",\n  \"os\": \"string\",\n  \"software\": {},\n  \"device_type\": \"string\",\n  \"criticality\": \"string\",\n  \"owner\": \"string\",\n  \"location\": \"string\",\n  \"tags\": [\n    \"string\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Asset",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assets/{asset_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assets",
+                ":asset_id"
+              ],
+              "variable": [
+                {
+                  "key": "asset_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete Asset"
+          },
+          "response": []
+        },
+        {
+          "name": "Bulk Import",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/assets/bulk",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "assets",
+                "bulk"
+              ],
+              "variable": []
+            },
+            "description": "Bulk Import"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "profile",
+      "item": [
+        {
+          "name": "Get Latest Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile/latest",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile",
+                "latest"
+              ],
+              "variable": []
+            },
+            "description": "Get Latest Profile"
+          },
+          "response": []
+        },
+        {
+          "name": "Patch Profile",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile"
+              ],
+              "variable": []
+            },
+            "description": "Patch Profile",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identity\": {\n    \"name\": \"string\",\n    \"sector\": \"string\",\n    \"sub_sector\": null,\n    \"employee_count_range\": null,\n    \"hq_country\": \"string\",\n    \"countries_of_operation\": [\n      null\n    ],\n    \"public_domains\": [\n      null\n    ],\n    \"language\": \"en\"\n  },\n  \"technology\": {\n    \"operating_systems\": [\n      null\n    ],\n    \"endpoint_os\": [\n      null\n    ],\n    \"software\": [\n      null\n    ],\n    \"network_devices\": [\n      null\n    ],\n    \"cloud_providers\": [\n      null\n    ],\n    \"identity_providers\": [\n      null\n    ],\n    \"remote_access\": [\n      null\n    ],\n    \"security_tools\": [\n      null\n    ],\n    \"industrial_ot\": false\n  },\n  \"exposure\": {\n    \"internet_facing_services\": [\n      null\n    ],\n    \"mobile_workforce\": false,\n    \"third_party_access\": false,\n    \"supply_chain_vendors\": [\n      null\n    ],\n    \"critical_data_types\": [\n      null\n    ]\n  },\n  \"compliance\": {\n    \"regulatory_frameworks\": [\n      null\n    ],\n    \"certifications\": [\n      null\n    ],\n    \"data_residency_requirements\": [\n      null\n    ]\n  },\n  \"geopolitical\": {\n    \"geopolitical_regions\": [\n      null\n    ],\n    \"conflict_adjacent\": false,\n    \"notable_partnerships\": [\n      null\n    ],\n    \"sanctions_exposure\": false\n  },\n  \"risk\": {\n    \"risk_appetite\": \"medium\",\n    \"crown_jewels\": [\n      null\n    ],\n    \"previous_incidents\": [\n      null\n    ],\n    \"threat_concerns\": [\n      null\n    ]\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Versions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile/versions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile",
+                "versions"
+              ],
+              "variable": []
+            },
+            "description": "List Versions"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Version",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/profile/versions/{version}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "profile",
+                "versions",
+                ":version"
+              ],
+              "variable": [
+                {
+                  "key": "version",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Version"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8007",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

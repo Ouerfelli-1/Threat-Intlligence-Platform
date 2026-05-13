@@ -1,0 +1,22 @@
+[project]
+name = "tip-flowviz"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.111.0",
+    "uvicorn[standard]>=0.29.0",
+    "sqlalchemy[asyncio]>=2.0.0",
+    "asyncpg>=0.29.0",
+    "alembic>=1.13.0",
+    "pydantic-settings>=2.0.0",
+    "tip-common @ file:///app/packages/tip_common",
+    "tip-auth @ file:///app/packages/tip_auth",
+    "tip-db @ file:///app/packages/tip_db",
+    "tip-cache @ file:///app/packages/tip_cache",
+    "tip-source-health @ file:///app/packages/tip_source_health",
+    "tip-secrets @ file:///app/packages/tip_secrets",
+    "tip-ai @ file:///app/packages/tip_ai",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

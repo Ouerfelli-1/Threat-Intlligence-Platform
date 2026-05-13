@@ -1,0 +1,268 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 0,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+      "id": 1,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(DISTINCT rf.value) as total FROM recon_findings rf WHERE rf.finding_type = 'subdomain' AND ('${target}' = 'ALL' OR rf.scope_id IN (SELECT scope_id FROM targets WHERE value = '${target}'))", "refId": "A" }],
+      "title": "🌐 Subdomains",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+      "id": 2,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(DISTINCT rf.value) as total FROM recon_findings rf WHERE rf.finding_type IN ('port', 'nmap_port', 'shodan_port') AND ('${target}' = 'ALL' OR rf.scope_id IN (SELECT scope_id FROM targets WHERE value = '${target}'))", "refId": "A" }],
+      "title": "🔌 Open Ports",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+      "id": 3,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(*) as total FROM recon_findings rf WHERE rf.finding_type = 'cve' AND ('${target}' = 'ALL' OR rf.scope_id IN (SELECT scope_id FROM targets WHERE value = '${target}'))", "refId": "A" }],
+      "title": "🚨 CVEs Found",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "fixedColor": "dark-red", "mode": "fixed" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "dark-red", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+      "id": 4,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(*) as total FROM recon_findings rf WHERE rf.finding_type = 'cve' AND (rf.extra_data->>'severity' IN ('CRITICAL', 'HIGH')) AND ('${target}' = 'ALL' OR rf.scope_id IN (SELECT scope_id FROM targets WHERE value = '${target}'))", "refId": "A" }],
+      "title": "⚠️ Critical/High CVEs",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+      "id": 5,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(DISTINCT rf.value) as total FROM recon_findings rf WHERE rf.finding_type IN ('service', 'nmap_service', 'shodan_service') AND ('${target}' = 'ALL' OR rf.scope_id IN (SELECT scope_id FROM targets WHERE value = '${target}'))", "refId": "A" }],
+      "title": "🔧 Services",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+      "id": 6,
+      "options": { "colorMode": "value", "graphMode": "area", "justifyMode": "auto", "orientation": "auto", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }, "textMode": "auto" },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(*) as total FROM recon_findings rf WHERE ('${target}' = 'ALL' OR rf.scope_id IN (SELECT scope_id FROM targets WHERE value = '${target}'))", "refId": "A" }],
+      "title": "📊 Total Findings",
+      "type": "stat"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "enabled" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "basic", "type": "color-background" } }, { "id": "mappings", "value": [{ "options": { "false": { "color": "red", "index": 1, "text": "❌ Disabled" }, "true": { "color": "green", "index": 0, "text": "✅ Active" } }, "type": "value" }] }] },
+          { "matcher": { "id": "byName", "options": "type" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "basic", "type": "color-background" } }, { "id": "mappings", "value": [{ "options": { "DOMAIN": { "color": "blue", "index": 0, "text": "🌐 Domain" }, "IP": { "color": "purple", "index": 1, "text": "🔢 IP" }, "CIDR": { "color": "orange", "index": 2, "text": "📡 CIDR" } }, "type": "value" }] }] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 4 },
+      "id": 15,
+      "options": { "cellHeight": "sm", "showHeader": true, "sortBy": [{ "desc": false, "displayName": "target" }] },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT t.value as target, t.type, t.enabled::text as enabled, s.name as scope, t.created_at FROM targets t JOIN scopes s ON t.scope_id = s.id WHERE ('${target}' = 'ALL' OR t.value = '${target}') ORDER BY t.value", "refId": "A" }],
+      "title": "🎯 All Targets",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "status" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "basic", "type": "color-background" } }, { "id": "mappings", "value": [{ "options": { "COMPLETED": { "color": "green", "index": 0, "text": "✅ Completed" }, "RUNNING": { "color": "blue", "index": 1, "text": "🔄 Running" }, "PENDING": { "color": "yellow", "index": 2, "text": "⏳ Pending" }, "FAILED": { "color": "red", "index": 3, "text": "❌ Failed" }, "CANCELLED": { "color": "gray", "index": 4, "text": "🚫 Cancelled" } }, "type": "value" }] }] },
+          { "matcher": { "id": "byName", "options": "mode" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "basic", "type": "color-background" } }, { "id": "mappings", "value": [{ "options": { "PASSIVE": { "color": "semi-dark-blue", "index": 0, "text": "🔍 Passive" }, "ACTIVE": { "color": "semi-dark-red", "index": 1, "text": "⚡ Active" } }, "type": "value" }] }] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 4 },
+      "id": 16,
+      "options": { "cellHeight": "sm", "showHeader": true, "sortBy": [{ "desc": true, "displayName": "started_at" }] },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT t.value as target, j.mode, j.status, j.triggered_by, j.started_at, j.duration_seconds as duration_sec, j.findings_count FROM jobs j JOIN targets t ON t.scope_id = j.scope_id WHERE ('${target}' = 'ALL' OR t.value = '${target}') ORDER BY j.started_at DESC NULLS LAST LIMIT 20", "refId": "A" }],
+      "title": "🚀 Launched Targets (Recent Jobs)",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "enabled" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "basic", "type": "color-background" } }, { "id": "mappings", "value": [{ "options": { "false": { "color": "red", "index": 1, "text": "❌ Disabled" }, "true": { "color": "green", "index": 0, "text": "✅ Active" } }, "type": "value" }] }] },
+          { "matcher": { "id": "byName", "options": "mode" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "basic", "type": "color-background" } }, { "id": "mappings", "value": [{ "options": { "PASSIVE": { "color": "semi-dark-blue", "index": 0, "text": "🔍 Passive" }, "ACTIVE": { "color": "semi-dark-red", "index": 1, "text": "⚡ Active" } }, "type": "value" }] }] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 4 },
+      "id": 17,
+      "options": { "cellHeight": "sm", "showHeader": true, "sortBy": [{ "desc": false, "displayName": "next_run" }] },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT t.value as target, sch.name as schedule_name, sch.mode, sch.cron_expression as cron, sch.enabled::text as enabled, sch.last_run, sch.next_run FROM schedules sch JOIN targets t ON t.scope_id = sch.scope_id WHERE ('${target}' = 'ALL' OR t.value = '${target}') ORDER BY sch.next_run ASC NULLS LAST", "refId": "A" }],
+      "title": "📅 Scheduled Targets",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } }, "mappings": [] },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "CRITICAL" }, "properties": [{ "id": "color", "value": { "fixedColor": "dark-red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "HIGH" }, "properties": [{ "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "MEDIUM" }, "properties": [{ "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } }] },
+          { "matcher": { "id": "byName", "options": "LOW" }, "properties": [{ "id": "color", "value": { "fixedColor": "yellow", "mode": "fixed" } }] }
+        ]
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+      "id": 7,
+      "options": { "displayLabels": ["name", "value"], "legend": { "displayMode": "list", "placement": "right", "showLegend": true, "values": ["value"] }, "pieType": "pie", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT COALESCE(rf.extra_data->>'severity', 'UNKNOWN') as severity, COUNT(*) as count FROM recon_findings rf WHERE rf.finding_type = 'cve' AND ('${target}' = 'ALL' OR rf.scope_id IN (SELECT scope_id FROM targets WHERE value = '${target}')) GROUP BY rf.extra_data->>'severity' ORDER BY CASE rf.extra_data->>'severity' WHEN 'CRITICAL' THEN 1 WHEN 'HIGH' THEN 2 WHEN 'MEDIUM' THEN 3 WHEN 'LOW' THEN 4 ELSE 5 END", "refId": "A" }],
+      "title": "🎯 CVE Severity Distribution",
+      "transformations": [{ "id": "rowsToFields", "options": { "mappings": [{ "fieldName": "severity", "handlerKey": "field.name" }, { "fieldName": "count", "handlerKey": "field.value" }] } }],
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "hideFrom": { "legend": false, "tooltip": false, "viz": false } }, "mappings": [] },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
+      "id": 8,
+      "options": { "displayLabels": ["name", "value"], "legend": { "displayMode": "list", "placement": "right", "showLegend": true, "values": ["value"] }, "pieType": "donut", "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": true }, "tooltip": { "mode": "single", "sort": "none" } },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT rf.finding_type as type, COUNT(*) as count FROM recon_findings rf WHERE ('${target}' = 'ALL' OR rf.scope_id IN (SELECT scope_id FROM targets WHERE value = '${target}')) GROUP BY rf.finding_type ORDER BY count DESC", "refId": "A" }],
+      "title": "📈 Findings by Type",
+      "transformations": [{ "id": "rowsToFields", "options": { "mappings": [{ "fieldName": "type", "handlerKey": "field.name" }, { "fieldName": "count", "handlerKey": "field.value" }] } }],
+      "type": "piechart"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "custom": { "axisBorderShow": false, "axisCenteredZero": false, "axisColorMode": "text", "axisLabel": "", "axisPlacement": "auto", "fillOpacity": 80, "gradientMode": "none", "hideFrom": { "legend": false, "tooltip": false, "viz": false }, "lineWidth": 1, "scaleDistribution": { "type": "linear" }, "thresholdsStyle": { "mode": "off" } }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
+      "id": 9,
+      "options": { "barRadius": 0, "barWidth": 0.6, "fullHighlight": false, "groupWidth": 0.7, "legend": { "calcs": [], "displayMode": "list", "placement": "bottom", "showLegend": false }, "orientation": "horizontal", "showValue": "always", "stacking": "none", "tooltip": { "mode": "single", "sort": "none" }, "xTickLabelRotation": 0, "xTickLabelSpacing": 0 },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT t.value as target, COUNT(rf.id) as findings FROM targets t LEFT JOIN recon_findings rf ON t.scope_id = rf.scope_id GROUP BY t.value ORDER BY findings DESC LIMIT 10", "refId": "A" }],
+      "title": "📊 Top Targets by Findings",
+      "type": "barchart"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "severity" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "basic", "type": "color-background" } }, { "id": "mappings", "value": [{ "options": { "CRITICAL": { "color": "dark-red", "index": 0 }, "HIGH": { "color": "red", "index": 1 }, "LOW": { "color": "yellow", "index": 3 }, "MEDIUM": { "color": "orange", "index": 2 } }, "type": "value" }] }] },
+          { "matcher": { "id": "byName", "options": "cvss" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "gradient", "type": "gauge" } }, { "id": "max", "value": 10 }, { "id": "min", "value": 0 }, { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 4 }, { "color": "orange", "value": 7 }, { "color": "red", "value": 9 }] } }] }
+        ]
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 20 },
+      "id": 10,
+      "options": { "cellHeight": "sm", "showHeader": true, "sortBy": [{ "desc": true, "displayName": "cvss" }] },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT rf.value as cve_id, rf.extra_data->>'severity' as severity, CAST(rf.extra_data->>'cvss_score' AS FLOAT) as cvss, rf.extra_data->>'host' as host, CAST(rf.extra_data->>'port' AS INTEGER) as port, rf.extra_data->>'service' as service, LEFT(rf.extra_data->>'description', 100) as description, t.value as target FROM recon_findings rf JOIN targets t ON t.scope_id = rf.scope_id WHERE rf.finding_type = 'cve' AND ('${target}' = 'ALL' OR t.value = '${target}') ORDER BY CAST(rf.extra_data->>'cvss_score' AS FLOAT) DESC NULLS LAST LIMIT 100", "refId": "A" }],
+      "title": "🚨 CVE Details Table",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 0, "y": 30 },
+      "id": 11,
+      "options": { "cellHeight": "sm", "showHeader": true, "sortBy": [] },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT rf.value as port_info, rf.extra_data->>'state' as state, rf.extra_data->>'protocol' as protocol, rf.extra_data->>'service' as service, rf.extra_data->>'product' as product, rf.source, t.value as target FROM recon_findings rf JOIN targets t ON t.scope_id = rf.scope_id WHERE rf.finding_type IN ('port', 'nmap_port', 'shodan_port') AND ('${target}' = 'ALL' OR t.value = '${target}') ORDER BY rf.time DESC LIMIT 100", "refId": "A" }],
+      "title": "🔌 Open Ports & Services",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 12, "x": 12, "y": 30 },
+      "id": 12,
+      "options": { "cellHeight": "sm", "showHeader": true, "sortBy": [] },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT rf.value as subdomain, rf.source, rf.time as discovered_at, t.value as target FROM recon_findings rf JOIN targets t ON t.scope_id = rf.scope_id WHERE rf.finding_type = 'subdomain' AND ('${target}' = 'ALL' OR t.value = '${target}') ORDER BY rf.time DESC LIMIT 100", "refId": "A" }],
+      "title": "🌐 Discovered Subdomains",
+      "type": "table"
+    },
+    {
+      "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "thresholds" }, "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false }, "mappings": [], "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] } },
+        "overrides": [{ "matcher": { "id": "byName", "options": "enabled" }, "properties": [{ "id": "custom.cellOptions", "value": { "mode": "basic", "type": "color-background" } }, { "id": "mappings", "value": [{ "options": { "false": { "color": "red", "index": 1, "text": "Disabled" }, "true": { "color": "green", "index": 0, "text": "Active" } }, "type": "value" }] }] }]
+      },
+      "gridPos": { "h": 8, "w": 24, "x": 0, "y": 40 },
+      "id": 14,
+      "options": { "cellHeight": "sm", "showHeader": true, "sortBy": [{ "desc": true, "displayName": "total_findings" }] },
+      "targets": [{ "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" }, "editorMode": "code", "format": "table", "rawQuery": true, "rawSql": "SELECT t.value as target, t.enabled::text as enabled, COUNT(DISTINCT CASE WHEN rf.finding_type = 'subdomain' THEN rf.value END) as subdomains, COUNT(DISTINCT CASE WHEN rf.finding_type IN ('port', 'nmap_port', 'shodan_port') THEN rf.value END) as ports, COUNT(CASE WHEN rf.finding_type = 'cve' THEN 1 END) as total_cves, COUNT(CASE WHEN rf.finding_type = 'cve' AND rf.extra_data->>'severity' = 'CRITICAL' THEN 1 END) as critical_cves, COUNT(CASE WHEN rf.finding_type = 'cve' AND rf.extra_data->>'severity' = 'HIGH' THEN 1 END) as high_cves, COUNT(rf.id) as total_findings, MAX(rf.time) as last_finding FROM targets t LEFT JOIN recon_findings rf ON t.scope_id = rf.scope_id WHERE ('${target}' = 'ALL' OR t.value = '${target}') GROUP BY t.value, t.enabled ORDER BY COUNT(rf.id) DESC", "refId": "A" }],
+      "title": "🎯 Attack Surface Summary by Target",
+      "type": "table"
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 38,
+  "tags": ["recon", "security", "attack-surface"],
+  "templating": {
+    "list": [
+      {
+        "allValue": "ALL",
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "datasource": { "type": "grafana-postgresql-datasource", "uid": "postgresql" },
+        "definition": "SELECT DISTINCT value FROM targets ORDER BY value",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Target",
+        "multi": false,
+        "name": "target",
+        "options": [],
+        "query": "SELECT DISTINCT value FROM targets ORDER BY value",
+        "refresh": 1,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "",
+  "title": "🛡️ Attack Surface Dashboard",
+  "uid": "attack-surface-main",
+  "version": 1
+}

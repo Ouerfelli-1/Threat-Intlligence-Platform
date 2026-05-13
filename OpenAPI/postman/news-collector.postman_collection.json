@@ -1,0 +1,365 @@
+{
+  "info": {
+    "_postman_id": "b7c5d2d7-49f5-47a1-8b3f-6b22026418a0",
+    "name": "TIP \u2014 news-collector",
+    "description": "RSS/feed ingestion and article query",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "articles",
+      "item": [
+        {
+          "name": "List Articles",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/articles",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "articles"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "q",
+                  "value": "",
+                  "description": "Free-text match on title/summary",
+                  "disabled": true
+                },
+                {
+                  "key": "source",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "tag",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "until",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "last",
+                  "value": "",
+                  "description": "Shortcut: 1h, 24h, 7d",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Articles"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Article",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/articles/{article_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "articles",
+                ":article_id"
+              ],
+              "variable": [
+                {
+                  "key": "article_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Article"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "feeds",
+      "item": [
+        {
+          "name": "List Feeds",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeds"
+              ],
+              "variable": []
+            },
+            "description": "List Feeds"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Feed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeds"
+              ],
+              "variable": []
+            },
+            "description": "Create Feed",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"url\": \"string\",\n  \"kind\": \"rss\",\n  \"active\": true,\n  \"reliability\": 0.7\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Feed",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds/{feed_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeds",
+                ":feed_id"
+              ],
+              "variable": [
+                {
+                  "key": "feed_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Update Feed",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"string\",\n  \"url\": \"string\",\n  \"active\": false,\n  \"reliability\": 0.0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Feed",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/feeds/{feed_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "feeds",
+                ":feed_id"
+              ],
+              "variable": [
+                {
+                  "key": "feed_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Delete Feed"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "ingest",
+      "item": [
+        {
+          "name": "Run Ingest",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ingest/run",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ingest",
+                "run"
+              ],
+              "variable": []
+            },
+            "description": "Run Ingest"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        },
+        {
+          "name": "Source Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "sources"
+              ],
+              "variable": []
+            },
+            "description": "Source Health"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8001",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

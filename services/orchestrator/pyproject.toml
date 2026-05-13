@@ -1,0 +1,22 @@
+[project]
+name = "tip-orchestrator"
+version = "0.1.0"
+description = "AI orchestration layer — ranked CVEs, actor likelihood, correlations, executive briefs"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "httpx>=0.27",
+    "tip-common @ file:///app/packages/tip_common",
+    "tip-auth @ file:///app/packages/tip_auth",
+    "tip-db @ file:///app/packages/tip_db",
+    "tip-cache @ file:///app/packages/tip_cache",
+    "tip-http @ file:///app/packages/tip_http",
+    "tip-source-health @ file:///app/packages/tip_source_health",
+    "tip-schemas @ file:///app/packages/tip_schemas",
+    "tip-ai @ file:///app/packages/tip_ai",
+    "tip-secrets @ file:///app/packages/tip_secrets",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

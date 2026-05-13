@@ -1,0 +1,291 @@
+name: tip-platform
+
+x-service-defaults: &service-defaults
+  restart: unless-stopped
+  environment:
+    TIP_ENV: ${TIP_ENV:-development}
+    DISABLE_AUTH: ${DISABLE_AUTH:-true}
+    DATABASE_URL: postgresql+asyncpg://tip:${POSTGRES_PASSWORD}@pgbouncer:6432/tip
+    REDIS_URL: redis://redis:6379/0
+    SECRETS_URL: http://secrets:8012
+    AUTH_URL: http://auth:8000
+    SECRETS_BOOTSTRAP_TOKEN: ${SECRETS_BOOTSTRAP_TOKEN}
+    NEWS_COLLECTOR_URL: http://news-collector:8001
+    VULN_INTEL_URL: http://vuln-intel:8002
+    THREAT_INTEL_URL: http://threat-intel:8003
+    IOC_COLLECTOR_URL: http://ioc-collector:8004
+    THREAT_ACTORS_URL: http://threat-actors:8005
+    INTEGRATIONS_URL: http://integrations:8006
+    CMDB_URL: http://cmdb:8007
+    FLOWVIZ_URL: http://flowviz:8008
+    ASM_URL: http://asm:8009
+    DOMAINWATCH_URL: http://domainwatch:8010
+    SCHEDULER_URL: http://scheduler:8011
+    INDICATOR_INTEL_URL: http://indicator-intel:8013
+    ORCHESTRATOR_URL: http://orchestrator:8014
+  depends_on:
+    pgbouncer:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+    alembic-init:
+      condition: service_completed_successfully
+    auth:
+      condition: service_healthy
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tip
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: tip
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tip -d tip"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.25.1-p0
+    environment:
+      DB_USER: tip
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: tip
+      POOL_MODE: transaction
+      MAX_CLIENT_CONN: 500
+      DEFAULT_POOL_SIZE: 30
+      LISTEN_PORT: 6432
+      AUTH_TYPE: scram-sha-256
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U tip || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  alembic-init:
+    build:
+      context: ..
+      dockerfile: infra/alembic-init/Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://tip:${POSTGRES_PASSWORD}@postgres:5432/tip
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  secrets:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/secrets/Dockerfile
+    environment:
+      TIP_ENV: ${TIP_ENV:-development}
+      DISABLE_AUTH: ${DISABLE_AUTH:-true}
+      DATABASE_URL: postgresql+asyncpg://tip:${POSTGRES_PASSWORD}@pgbouncer:6432/tip
+      REDIS_URL: redis://redis:6379/0
+      FERNET_KEY: ${FERNET_KEY}
+      SECRETS_BOOTSTRAP_TOKEN: ${SECRETS_BOOTSTRAP_TOKEN}
+    ports:
+      - "8012:8012"
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      alembic-init:
+        condition: service_completed_successfully
+
+  auth:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/auth/Dockerfile
+    environment:
+      TIP_ENV: ${TIP_ENV:-development}
+      DISABLE_AUTH: ${DISABLE_AUTH:-true}
+      DATABASE_URL: postgresql+asyncpg://tip:${POSTGRES_PASSWORD}@pgbouncer:6432/tip
+      REDIS_URL: redis://redis:6379/0
+      SECRETS_URL: http://secrets:8012
+      SECRETS_BOOTSTRAP_TOKEN: ${SECRETS_BOOTSTRAP_TOKEN}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-changeme}
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c 'import urllib.request; urllib.request.urlopen(\"http://localhost:8000/health\", timeout=3)'"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      secrets:
+        condition: service_started
+      alembic-init:
+        condition: service_completed_successfully
+
+  cmdb:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/cmdb/Dockerfile
+    ports:
+      - "8007:8007"
+
+  news-collector:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/news-collector/Dockerfile
+    ports:
+      - "8001:8001"
+
+  vuln-intel:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/vuln-intel/Dockerfile
+    ports:
+      - "8002:8002"
+
+  threat-intel:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/threat-intel/Dockerfile
+    ports:
+      - "8003:8003"
+
+  ioc-collector:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/ioc-collector/Dockerfile
+    ports:
+      - "8004:8004"
+
+  threat-actors:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/threat-actors/Dockerfile
+    ports:
+      - "8005:8005"
+
+  integrations:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/integrations/Dockerfile
+    ports:
+      - "8006:8006"
+
+  flowviz:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/flowviz/Dockerfile
+    ports:
+      - "8008:8008"
+
+  asm:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/asm/Dockerfile
+    ports:
+      - "8009:8009"
+
+  domainwatch:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/domainwatch/Dockerfile
+    ports:
+      - "8010:8010"
+    volumes:
+      - domainwatch-screenshots:/var/lib/domainwatch/screenshots
+
+  scheduler:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/scheduler/Dockerfile
+    ports:
+      - "8011:8011"
+
+  indicator-intel:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/indicator-intel/Dockerfile
+    ports:
+      - "8013:8013"
+
+  orchestrator:
+    <<: *service-defaults
+    build:
+      context: ..
+      dockerfile: services/orchestrator/Dockerfile
+    ports:
+      - "8014:8014"
+
+  # One-shot knowledge-base seed. Fires full ingest on first boot, no-ops on subsequent boots
+  # (checks BOOTSTRAP_SEED_COMPLETED marker in the secrets vault).
+  bootstrap-seed:
+    build:
+      context: ..
+      dockerfile: infra/seed/Dockerfile
+    environment:
+      AUTH_URL: http://auth:8000
+      SECRETS_URL: http://secrets:8012
+      CMDB_URL: http://cmdb:8007
+      THREAT_ACTORS_URL: http://threat-actors:8005
+      IOC_COLLECTOR_URL: http://ioc-collector:8004
+      VULN_INTEL_URL: http://vuln-intel:8002
+      NEWS_COLLECTOR_URL: http://news-collector:8001
+      THREAT_INTEL_URL: http://threat-intel:8003
+      SECRETS_BOOTSTRAP_TOKEN: ${SECRETS_BOOTSTRAP_TOKEN}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-admin}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-changeme}
+      FORCE_SEED: ${FORCE_SEED:-}
+    depends_on:
+      auth:
+        condition: service_healthy
+      secrets:
+        condition: service_started
+      cmdb:
+        condition: service_started
+      threat-actors:
+        condition: service_started
+      ioc-collector:
+        condition: service_started
+      vuln-intel:
+        condition: service_started
+      news-collector:
+        condition: service_started
+      threat-intel:
+        condition: service_started
+    restart: "no"
+
+volumes:
+  postgres-data:
+  domainwatch-screenshots:

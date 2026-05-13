@@ -1,0 +1,19 @@
+[project]
+name = "tip-auth-service"
+version = "0.1.0"
+description = "JWT issuance, RBAC, sessions, and service identity for TIP"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "argon2-cffi>=23.1",
+    "PyJWT[crypto]>=2.8",
+    "cryptography>=42.0",
+    "httpx>=0.27",
+    "tip-common @ file:///app/packages/tip_common",
+    "tip-db @ file:///app/packages/tip_db",
+    "tip-http @ file:///app/packages/tip_http",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

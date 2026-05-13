@@ -1,0 +1,103 @@
+name: tip-platform
+
+# Dev overlay: bind-mount packages so changes show up without rebuild, force auth disabled.
+# Usage: docker compose -f infra/docker-compose.yml -f infra/docker-compose.dev.yml up -d
+
+services:
+  postgres:
+    ports:
+      - "5432:5432"
+  redis:
+    ports:
+      - "6379:6379"
+
+  secrets:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  auth:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  cmdb:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  news-collector:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  vuln-intel:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  threat-intel:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  ioc-collector:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  threat-actors:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  integrations:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  flowviz:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  asm:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  domainwatch:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  scheduler:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  indicator-intel:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages
+  orchestrator:
+    environment:
+      DISABLE_AUTH: "true"
+      LOG_LEVEL: DEBUG
+    volumes:
+      - ../packages:/app/packages

@@ -1,0 +1,21 @@
+[project]
+name = "tip-source-health"
+version = "0.1.0"
+description = "Per-service source health tracking with circuit breaker semantics"
+requires-python = ">=3.11"
+dependencies = [
+    "sqlalchemy>=2.0,<3",
+    "tip-cache",
+    "tip-common",
+]
+
+[tool.uv.sources]
+tip-cache = { path = "../tip_cache", editable = true }
+tip-common = { path = "../tip_common", editable = true }
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/tip_source_health"]

@@ -1,0 +1,190 @@
+{
+  "identity": {
+    "name": "Banque Maghreb Atlantique (BMA)",
+    "sector": "finance",
+    "sub_sector": "retail-and-commercial-banking",
+    "employee_count_range": "500-1000",
+    "hq_country": "MA",
+    "countries_of_operation": ["MA", "DZ", "TN", "SN", "CI", "FR"],
+    "public_domains": [
+      "bma-bank.ma",
+      "bma-bank.com",
+      "clientele.bma-bank.ma",
+      "mobile.bma-bank.ma",
+      "api.bma-bank.ma",
+      "extranet.bma-bank.ma"
+    ],
+    "language": "fr"
+  },
+  "technology": {
+    "operating_systems": [
+      "Windows Server 2019",
+      "Windows Server 2022",
+      "Red Hat Enterprise Linux 8",
+      "Ubuntu 22.04 LTS"
+    ],
+    "endpoint_os": [
+      "Windows 11 Enterprise",
+      "Windows 10 Enterprise LTSC",
+      "macOS 14 Sonoma"
+    ],
+    "software": [
+      "Temenos Transact T24 (core banking)",
+      "Finastra Fusion Loan IQ",
+      "Oracle Database 19c",
+      "Microsoft SQL Server 2019",
+      "Apache Tomcat 9",
+      "Nginx 1.24",
+      "Microsoft Exchange Server 2019",
+      "Microsoft SharePoint 2019",
+      "SAP ERP (HR module)",
+      "Cisco ISE 3.1",
+      "Symantec Endpoint Protection 14",
+      "Splunk Enterprise 9.1",
+      "Wazuh 4.7",
+      "OpenVPN Access Server 2.12",
+      "Citrix Virtual Apps 2303",
+      "VMware vSphere 8.0",
+      "Veeam Backup & Replication 12",
+      "IBM MQ 9.3",
+      "Swift Alliance Access 7.4"
+    ],
+    "network_devices": [
+      "Cisco ASA 5500-X Firewall",
+      "Cisco Catalyst 9000 series switches",
+      "Fortinet FortiGate 600E (perimeter)",
+      "F5 BIG-IP LTM (load balancer)",
+      "Palo Alto Networks PA-3400 (DMZ)",
+      "Aruba ClearPass (NAC)",
+      "Juniper SRX (branch offices)"
+    ],
+    "cloud_providers": [
+      "Microsoft Azure (disaster recovery site)",
+      "OVHcloud (secondary hosting, EU-sovereign)"
+    ],
+    "identity_providers": [
+      "Microsoft Active Directory (on-prem)",
+      "Azure AD Connect (hybrid sync)",
+      "RSA SecurID (MFA for privileged access)",
+      "CyberArk PAS (PAM)"
+    ],
+    "remote_access": [
+      "Cisco AnyConnect VPN",
+      "Citrix Virtual Apps (branch tellers)",
+      "Zscaler Private Access (pilot, 50 users)"
+    ],
+    "security_tools": [
+      "Wazuh SIEM 4.7",
+      "Splunk Enterprise Security 7.3",
+      "CrowdStrike Falcon (EDR, 600 endpoints)",
+      "Tenable.sc (vulnerability management)",
+      "Imperva WAF (web application firewall)",
+      "Proofpoint Email Security",
+      "Digital Shadows (brand monitoring, limited license)",
+      "ManageEngine PAM360",
+      "IBM QRadar SOAR (playbook automation, pilot)"
+    ],
+    "industrial_ot": false
+  },
+  "exposure": {
+    "internet_facing_services": [
+      "Online banking portal (HTTPS, Nginx + Tomcat, port 443)",
+      "Mobile banking API gateway (REST/JSON, api.bma-bank.ma)",
+      "Swift Alliance Access (IP-restricted, port 9100)",
+      "Citrix Receiver web interface (extranet.bma-bank.ma)",
+      "Corporate website (WordPress 6.4, clientele.bma-bank.ma)",
+      "ATM network management interface (VLAN-isolated, Internet-routable backup link)",
+      "Partner B2B API (OAuth 2.0, IP allowlisted)"
+    ],
+    "mobile_workforce": true,
+    "third_party_access": true,
+    "supply_chain_vendors": [
+      "Temenos (core banking SaaS support, VPN access)",
+      "IBM (mainframe maintenance, on-site + remote)",
+      "Sopra Banking Software (Finastra integration)",
+      "HPS (payment switch, HighPay)",
+      "Worldline (card processing)",
+      "Diebold Nixdorf (ATM hardware and software)",
+      "Orange Maroc (MPLS WAN)",
+      "Maroc Telecom (Internet uplink, backup)",
+      "Atos (IT outsourcing, 12 staff on-site)"
+    ],
+    "critical_data_types": [
+      "Customer PII (names, national ID, CIN, passports)",
+      "Account and transaction records (~2.1 million accounts)",
+      "SWIFT interbank messaging",
+      "Card PAN data (tokenized via Worldline)",
+      "Loan and credit scoring models",
+      "Regulatory reporting data (Bank Al-Maghrib submissions)",
+      "Internal HR records",
+      "Corporate banking client financial statements"
+    ]
+  },
+  "compliance": {
+    "regulatory_frameworks": [
+      "Bank Al-Maghrib Circular 5/W/2016 (cybersecurity)",
+      "Bank Al-Maghrib Directive DN 01/G/2019 (DORA-equivalent)",
+      "PCI-DSS 4.0 (card data environment)",
+      "SWIFT Customer Security Programme (CSP) 2024",
+      "Moroccan Law 09-08 (personal data protection)",
+      "GDPR (partial — EU operations via Paris branch)",
+      "Moroccan AML/CFT Law 43-05",
+      "Basel III (capital adequacy reporting)"
+    ],
+    "certifications": [
+      "ISO 27001:2022 (certified, scope: core banking and data centre)",
+      "PCI-DSS Level 2 SAQ",
+      "ISO 22301 (business continuity, in progress)"
+    ],
+    "data_residency_requirements": [
+      "Customer PII must remain within Morocco (Law 09-08)",
+      "SWIFT messages: Morocco primary, OVHcloud EU for DR only",
+      "Card data: Worldline EU datacentre (contractual obligation)"
+    ]
+  },
+  "geopolitical": {
+    "geopolitical_regions": [
+      "North Africa",
+      "West Africa (Senegal, Côte d'Ivoire subsidiaries)",
+      "Western Europe (France correspondent banking)"
+    ],
+    "conflict_adjacent": false,
+    "notable_partnerships": [
+      "Correspondent banking: BNP Paribas, Société Générale, CIB Egypt",
+      "SWIFT Bureau de Change network (regional)",
+      "GIM-UEMOA (West African interbank settlement)",
+      "Moroccan Banking Federation (GPBM) threat-sharing circle"
+    ],
+    "sanctions_exposure": false
+  },
+  "risk": {
+    "risk_appetite": "low",
+    "crown_jewels": [
+      "Temenos T24 core banking database (Oracle 19c, account balances and transactions)",
+      "SWIFT Alliance Access infrastructure (interbank transfer authorisation)",
+      "CyberArk vault (privileged credentials for 340 admin accounts)",
+      "Customer PII database (~2.1M records)",
+      "Card tokenisation keys (Worldline HSM integration)",
+      "Loan origination models and credit scoring algorithms",
+      "Bank Al-Maghrib regulatory reporting pipeline"
+    ],
+    "previous_incidents": [
+      "2022-Q3: Phishing campaign targeting teller workstations; 3 credentials compromised, contained before lateral movement",
+      "2023-Q1: Ransomware pre-positioning discovered on Citrix server (LockBit affiliate TTPs); isolated and remediated in 18h",
+      "2023-Q4: Business Email Compromise attempt on CFO; wire transfer of MAD 4.2M intercepted by dual-approval control",
+      "2024-Q2: DDoS against online banking portal (peak 38 Gbps); mitigated via Cloudflare Magic Transit (emergency contract)",
+      "2024-Q4: Supply-chain compromise of Atos contractor laptop; malware detected by CrowdStrike before network propagation"
+    ],
+    "threat_concerns": [
+      "Ransomware targeting North African financial institutions (LockBit 3.0, ALPHV/BlackCat successors, Medusa)",
+      "Nation-state APTs with North Africa nexus (APT43, Charming Kitten — financial sector espionage)",
+      "Insider threat from third-party IT contractors (Atos, Temenos support)",
+      "SWIFT fraud (Business Email Compromise + SWIFT operator targeting)",
+      "ATM jackpotting and logical attacks (Diebold Nixdorf firmware vulnerabilities)",
+      "Supply-chain attacks through core banking vendor update channels",
+      "Mobile banking API abuse (credential stuffing, ATO — 600+ failed logins/day average)",
+      "Zero-day exploitation of internet-facing Citrix and Nginx infrastructure",
+      "Data exfiltration targeting customer PII for sale on dark web forums"
+    ]
+  }
+}

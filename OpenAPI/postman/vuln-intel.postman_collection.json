@@ -1,0 +1,291 @@
+{
+  "info": {
+    "_postman_id": "54fb65c1-de34-444d-bef1-c3f54452e825",
+    "name": "TIP \u2014 vuln-intel",
+    "description": "CVE/EPSS/KEV ingestion + query",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "cves",
+      "item": [
+        {
+          "name": "List Cves",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cves"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "severity",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "product",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "kev",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "epss_gte",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Cves"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cve",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/cves/{cve_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "cves",
+                ":cve_id"
+              ],
+              "variable": [
+                {
+                  "key": "cve_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Cve"
+          },
+          "response": []
+        },
+        {
+          "name": "List Kev",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/kev",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "kev"
+              ],
+              "variable": []
+            },
+            "description": "List Kev"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        },
+        {
+          "name": "Source Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "sources"
+              ],
+              "variable": []
+            },
+            "description": "Source Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "refresh",
+      "item": [
+        {
+          "name": "Refresh Nvd",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/refresh/nvd",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "refresh",
+                "nvd"
+              ],
+              "variable": []
+            },
+            "description": "Refresh Nvd"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Epss",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/refresh/epss",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "refresh",
+                "epss"
+              ],
+              "variable": []
+            },
+            "description": "Refresh Epss"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Kev",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/refresh/kev",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "refresh",
+                "kev"
+              ],
+              "variable": []
+            },
+            "description": "Refresh Kev"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8002",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

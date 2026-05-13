@@ -1,0 +1,14 @@
+{
+    "otx_api_key": "",
+    "smtp": {
+        "host": "smtp.gmail.com",
+        "port": 587,
+        "user": "",
+        "password": "",
+        "from_email": "",
+        "to_email": [""],
+        "sender_name": "DomainWatch"
+    },
+    "scheduler_interval_seconds": 3600,
+    "session_secret": ""
+}

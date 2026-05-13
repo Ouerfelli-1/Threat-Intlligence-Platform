@@ -1,0 +1,105 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Domain Records Changed</title>
+</head>
+<body style="margin:0;padding:0;background-color:#0f0f0f;font-family:'Segoe UI',Arial,sans-serif;">
+
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#0f0f0f;padding:30px 0;">
+    <tr>
+      <td align="center">
+        <table width="680" cellpadding="0" cellspacing="0" style="background-color:#1a1a1a;border-radius:6px;overflow:hidden;border:1px solid #2a2a2a;">
+
+          <tr>
+            <td style="background-color:#b00000;padding:0;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="padding:20px 30px;">
+                    <span style="font-size:11px;font-weight:700;letter-spacing:3px;color:#ffffff;text-transform:uppercase;">DomainWatch - Threat Intelligence Advisory</span>
+                  </td>
+                  <td align="right" style="padding:20px 30px;">
+                    <span style="font-size:11px;color:#ffcccc;letter-spacing:1px;">Records Monitor</span>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#111111;padding:24px 30px 18px 30px;border-bottom:2px solid #b00000;">
+              <span style="font-size:20px;font-weight:700;color:#ffffff;letter-spacing:0.5px;">&#9888;&nbsp; Domain Records Changed</span>
+              <br/>
+              <span style="font-size:12px;color:#888888;margin-top:4px;display:block;">DNS or WHOIS data differs from previous baseline</span>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:20px 30px 10px 30px;">
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;margin-bottom:14px;">
+                <tr style="background-color:#222222;">
+                  <td style="padding:10px 12px;font-size:11px;font-weight:700;color:#888888;letter-spacing:1.2px;text-transform:uppercase;border-bottom:1px solid #333333;width:140px;">Case ID</td>
+                  <td style="padding:10px 12px;font-size:13px;color:#ffffff;border-bottom:1px solid #333333;">{{ case_id or 'N/A' }}</td>
+                </tr>
+                <tr style="background-color:#1c1c1c;">
+                  <td style="padding:10px 12px;font-size:11px;font-weight:700;color:#888888;letter-spacing:1.2px;text-transform:uppercase;border-bottom:1px solid #333333;">Domain</td>
+                  <td style="padding:10px 12px;font-size:13px;color:#ffffff;border-bottom:1px solid #333333;">{{ domain }}</td>
+                </tr>
+              </table>
+
+              <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+                <tr style="background-color:#222222;">
+                  <td colspan="2" style="padding:10px 12px;font-size:11px;font-weight:700;color:#ffb3b3;letter-spacing:1.2px;text-transform:uppercase;border-bottom:1px solid #333333;">Changed Records</td>
+                </tr>
+                {% set fields = ['registrar', 'status', 'creation_date', 'expiration_date', 'updated_date'] %}
+                {% for field in fields %}
+                  {% set old_val = old_details.get(field, 'N/A') %}
+                  {% set new_val = new_details.get(field, 'N/A') %}
+                  {% if old_val != new_val %}
+                  <tr style="background-color:#1c1c1c;">
+                    <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#aaaaaa;border-bottom:1px solid #333333;text-transform:capitalize;width:170px;">{{ field|replace('_', ' ') }}</td>
+                    <td style="padding:10px 12px;font-size:12px;color:#ffffff;border-bottom:1px solid #333333;">
+                      <span style="text-decoration:line-through;color:#ff7b7b;">{{ old_val }}</span>
+                      <span style="margin:0 6px;color:#777777;">&rarr;</span>
+                      <span style="font-weight:700;color:#8cf5b0;">{{ new_val }}</span>
+                    </td>
+                  </tr>
+                  {% endif %}
+                {% endfor %}
+                {% set old_ips = (old_details.get('main_ips', {}).get('ipv4', []) + old_details.get('main_ips', {}).get('ipv6', []))|join(', ') %}
+                {% set new_ips = (new_details.get('main_ips', {}).get('ipv4', []) + new_details.get('main_ips', {}).get('ipv6', []))|join(', ') %}
+                {% if old_ips != new_ips %}
+                <tr style="background-color:#1c1c1c;">
+                  <td style="padding:10px 12px;font-size:12px;font-weight:700;color:#aaaaaa;border-bottom:1px solid #333333;">Main IPs</td>
+                  <td style="padding:10px 12px;font-family:Consolas,'Courier New',monospace;font-size:11px;color:#ffffff;border-bottom:1px solid #333333;">
+                    <span style="text-decoration:line-through;color:#ff7b7b;">{{ old_ips or 'None' }}</span>
+                    <span style="margin:0 6px;color:#777777;">&rarr;</span>
+                    <span style="font-weight:700;color:#8cf5b0;">{{ new_ips or 'None' }}</span>
+                  </td>
+                </tr>
+                {% endif %}
+              </table>
+
+              <p style="margin:18px 0 0 0;font-size:13px;color:#aaaaaa;line-height:1.6;">{{ sender_name }}<br/>Threat Intelligence Team</p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="background-color:#111111;border-top:1px solid #2a2a2a;padding:16px 30px;">
+              <table width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td><span style="font-size:11px;color:#555555;">DomainWatch automated alert</span></td>
+                  <td align="right"><span style="font-size:11px;color:#555555;">{{ timestamp }}</span></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+
+        </table>
+      </td>
+    </tr>
+  </table>
+
+</body>
+</html>

@@ -1,0 +1,56 @@
+from fastapi import FastAPI
+
+from tip_auth import JWTAuthMiddleware
+from tip_cache import Cache
+from tip_common import create_service_app, wire_auth
+from tip_source_health import SourceHealthRepository
+
+from app.db import close_engine, get_session_factory, init_engine
+from app.models import SourceHealth
+from app.routes import actors, health, ransomware, refresh, tools
+from app.settings import get_settings
+
+settings = get_settings()
+
+
+async def _startup(app: FastAPI) -> None:
+    init_engine(settings)
+    session_factory = get_session_factory()
+    app.state.session_factory = session_factory
+    cache = Cache.from_url(settings.redis_url)
+    app.state.cache = cache
+    app.state.source_health = SourceHealthRepository(
+        service=settings.service_name,
+        table=SourceHealth,
+        session_factory=session_factory,
+        cache=cache,
+    )
+    await wire_auth(app, settings, settings.service_name)
+
+
+async def _shutdown(app: FastAPI) -> None:
+    cache: Cache | None = getattr(app.state, "cache", None)
+    if cache is not None:
+        await cache.close()
+    await close_engine()
+
+
+app = create_service_app(
+    settings=settings,
+    title="TIP Threat Actors",
+    description="Threat actor library — MITRE ATT&CK, ransomware groups, tools and TTPs",
+    on_startup=[_startup],
+    on_shutdown=[_shutdown],
+)
+app.add_middleware(
+    JWTAuthMiddleware,
+    public_key=settings.auth_public_key,
+    disable_auth=settings.disable_auth,
+    tip_env=settings.tip_env,
+)
+
+app.include_router(actors.router)
+app.include_router(ransomware.router)
+app.include_router(tools.router)
+app.include_router(refresh.router)
+app.include_router(health.router)

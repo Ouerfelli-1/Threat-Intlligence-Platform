@@ -1,0 +1,285 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ domain["name"] }} — Details</title>
+  <style>
+    * { box-sizing: border-box; font-family: Arial, sans-serif; }
+    body { margin: 0; background: #f1f5f9; color: #0f172a; }
+    .container { max-width: 1100px; margin: 40px auto; padding: 24px; }
+    .card { background: white; border-radius: 14px; padding: 24px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); margin-bottom: 24px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+    a.back { text-decoration: none; color: white; background: #2563eb; padding: 10px 14px; border-radius: 8px; }
+    h1 { margin-top: 0; }
+    .case-badge { display: inline-block; padding: 6px 14px; background: #eff6ff; border: 1px solid #dbeafe; border-radius: 8px; font-size: 14px; font-weight: 700; color: #1d4ed8; margin-bottom: 16px; }
+    .status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; text-transform: uppercase; }
+    .status-unknown { background: #e2e8f0; color: #64748b; }
+    .status-active { background: #dcfce7; color: #16a34a; }
+    .status-inactive { background: #fee2e2; color: #dc2626; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
+    .section-title { font-size: 16px; font-weight: 700; color: #1e293b; margin: 0 0 14px; padding-bottom: 8px; border-bottom: 2px solid #e2e8f0; }
+    table.info { width: 100%; border-collapse: collapse; font-size: 14px; }
+    table.info td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; }
+    table.info td:first-child { font-weight: 700; color: #475569; width: 160px; }
+    .screenshot-container { text-align: center; }
+    .screenshot-container img { max-width: 100%; border-radius: 10px; border: 1px solid #e2e8f0; }
+    .no-screenshot { color: #94a3b8; font-style: italic; text-align: center; padding: 40px 0; }
+    .sub-list { list-style: none; padding: 0; margin: 0; max-height: 200px; overflow-y: auto; }
+    .sub-list li { padding: 6px 10px; font-size: 13px; font-family: monospace; border-bottom: 1px solid #f1f5f9; }
+    .stat-box { display: inline-block; padding: 10px 20px; background: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 10px; text-align: center; margin-bottom: 14px; }
+    .stat-number { font-size: 28px; font-weight: 800; color: #7c3aed; }
+    .stat-label { font-size: 12px; color: #6b7280; }
+    .ioc-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .ioc-table th { text-align: left; padding: 8px 12px; background: #f5f3ff; color: #7c3aed; font-weight: 700; border-bottom: 2px solid #ddd6fe; }
+    .ioc-table td { padding: 8px 12px; border-bottom: 1px solid #f1f5f9; font-family: monospace; word-break: break-all; }
+    .ioc-table .ioc-type { font-family: Arial, sans-serif; font-weight: 700; text-transform: uppercase; font-size: 11px; color: #6b7280; }
+    .ioc-container { max-height: 300px; overflow-y: auto; }
+    .timeline { list-style: none; padding: 0; margin: 0; }
+    .timeline li { position: relative; padding: 14px 14px 14px 28px; border-left: 3px solid #e2e8f0; margin-left: 8px; }
+    .timeline li::before { content: ''; position: absolute; left: -7px; top: 18px; width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; }
+    .timeline .initial_entry::before { background: #16a34a; }
+    .timeline .new_detection::before { background: #16a34a; }
+    .timeline .records_changed::before { background: #dc2626; }
+    .timeline .content_changed::before { background: #f59e0b; }
+    .timeline .new_iocs::before { background: #7c3aed; }
+    .timeline .new_subdomains::before { background: #0891b2; }
+    .change-type { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; }
+    .change-type.initial_entry { color: #16a34a; }
+    .change-type.new_detection { color: #16a34a; }
+    .change-type.records_changed { color: #dc2626; }
+    .change-type.content_changed { color: #d97706; }
+    .change-type.new_iocs { color: #7c3aed; }
+    .change-type.new_subdomains { color: #0891b2; }
+    .change-time { font-size: 12px; color: #94a3b8; }
+    .change-detail { font-size: 13px; color: #475569; margin-top: 6px; line-height: 1.5; }
+    .change-detail .label { font-weight: 700; color: #64748b; }
+    .change-detail ul { margin: 4px 0 0 16px; padding: 0; }
+    .change-detail li { margin-bottom: 2px; font-family: monospace; font-size: 12px; }
+    .change-detail .diff-old { text-decoration: line-through; color: #ef4444; }
+    .change-detail .diff-new { color: #16a34a; font-weight: 700; }
+    .ns-ips { font-size: 12px; color: #64748b; font-family: monospace; }
+    .empty-state { color: #94a3b8; font-style: italic; padding: 12px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="topbar">
+        <div>
+          <h1>{{ domain["name"] }}</h1>
+          {% if domain["case_id"] %}
+            <div class="case-badge">Case ID: {{ domain["case_id"] }}</div>
+          {% endif %}
+          {% if domain['status'] == 'active' %}
+            <span class="status-badge status-active">Active</span>
+          {% elif domain['status'] == 'inactive' %}
+            <span class="status-badge status-inactive">Inactive</span>
+          {% else %}
+            <span class="status-badge status-unknown">{{ domain["status"] }}</span>
+          {% endif %}
+        </div>
+        <a class="back" href="/dashboard">Back</a>
+      </div>
+
+      <div class="grid">
+        <!-- Domain Intelligence -->
+        <div>
+          <div class="section-title">Domain Intelligence</div>
+          {% if details %}
+          <table class="info">
+            <tr><td>Registrar</td><td>{{ details.get('registrar', 'N/A') or 'N/A' }}</td></tr>
+            <tr><td>Status</td><td>{{ details.get('status', [])|join(', ') or 'N/A' }}</td></tr>
+            <tr><td>Created</td><td>{{ details.get('creation_date', 'N/A') or 'N/A' }}</td></tr>
+            <tr><td>Updated</td><td>{{ details.get('updated_date', 'N/A') or 'N/A' }}</td></tr>
+            <tr><td>Expires</td><td>{{ details.get('expiration_date', 'N/A') or 'N/A' }}</td></tr>
+            <tr><td>IPv4</td><td>{{ details.get('main_ips', {}).get('ipv4', [])|join(', ') or 'None' }}</td></tr>
+            <tr><td>IPv6</td><td>{{ details.get('main_ips', {}).get('ipv6', [])|join(', ') or 'None' }}</td></tr>
+            <tr><td>Nameservers</td><td>
+              {% for ns in details.get('nameservers', []) %}
+                {{ ns.get('host', '') }}
+                {% set ns_ips = ns.get('ips', {}) %}
+                {% set ns_ipv4 = ns_ips.get('ipv4', []) %}
+                {% set ns_ipv6 = ns_ips.get('ipv6', []) %}
+                {% if ns_ipv4 or ns_ipv6 %}
+                  <br><span class="ns-ips">&nbsp;&nbsp;↳ {{ (ns_ipv4 + ns_ipv6)|join(', ') }}</span>
+                {% endif %}
+                {% if not loop.last %}<br>{% endif %}
+              {% endfor %}
+            </td></tr>
+            <tr><td>MX Records</td><td>{% for mx in details.get('mx_records', []) %}{{ mx.get('host', 'N/A') }} (pri {{ mx.get('priority', '') }}){% if not loop.last %}<br>{% endif %}{% endfor %}</td></tr>
+          </table>
+          {% else %}
+          <div class="empty-state">No domain data yet. Waiting for first check.</div>
+          {% endif %}
+        </div>
+
+        <!-- Screenshot -->
+        <div>
+          <div class="section-title">Latest Screenshot</div>
+          <div class="screenshot-container">
+            {% if screenshot_url %}
+              <img src="{{ screenshot_url }}" alt="Screenshot of {{ domain['name'] }}" />
+            {% else %}
+              <div class="no-screenshot">No screenshot available yet.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid">
+      <!-- IOCs -->
+      <div class="card">
+        <div class="section-title">IOC Summary ({{ iocs|length }})</div>
+        <div class="stat-box">
+          <div class="stat-number">{{ iocs|length }}</div>
+          <div class="stat-label">Known Indicators</div>
+        </div>
+        {% if iocs %}
+        <div class="ioc-container">
+          <table class="ioc-table">
+            <thead><tr><th>Type</th><th>Value</th><th>First Seen</th></tr></thead>
+            <tbody>
+              {% for ioc in iocs %}
+              <tr>
+                <td class="ioc-type">{{ ioc["ioc_type"] }}</td>
+                <td>{{ ioc["ioc_value"] }}</td>
+                <td style="font-family:Arial;font-size:12px;color:#94a3b8;white-space:nowrap;">{{ ioc["first_seen_at"][:10] }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty-state">No IOCs discovered yet.</div>
+        {% endif %}
+      </div>
+
+      <!-- Subdomains -->
+      <div class="card">
+        <div class="section-title">Known Subdomains ({{ subdomains|length }})</div>
+        {% if subdomains %}
+        <ul class="sub-list">
+          {% for sub in subdomains %}
+            <li>{{ sub["subdomain"] }} <span style="font-size:11px; color:#94a3b8; font-family:Arial;">— {{ sub["first_seen_at"][:10] }}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty-state">No subdomains discovered yet.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Change Timeline -->
+    <div class="card">
+      <div class="section-title">Change Timeline</div>
+      {% if history %}
+      <ul class="timeline">
+        {% for event in history %}
+        <li class="{{ event['change_type'] }}">
+          <span class="change-type {{ event['change_type'] }}">
+            {% if event['change_type'] == 'initial_entry' %}Initial Entry
+            {% elif event['change_type'] == 'new_detection' %}Initial Entry
+            {% elif event['change_type'] == 'records_changed' %}Records Changed
+            {% elif event['change_type'] == 'content_changed' %}Content Changed
+            {% elif event['change_type'] == 'new_iocs' %}New IOCs
+            {% elif event['change_type'] == 'new_subdomains' %}New Subdomains
+            {% else %}{{ event['change_type'] }}{% endif %}
+          </span>
+          <span class="change-time">{{ event['changed_at'] }}</span>
+          <div class="change-detail">
+            {% if event['change_type'] in ('initial_entry', 'new_detection') %}
+              {% if event['new_value'] %}
+              <script>
+                (function() {
+                  try {
+                    var raw = {{ event['new_value'] | tojson | safe }};
+                    var d = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+                    var el = document.currentScript.parentElement;
+                    var parts = [];
+                    if (d.details) { parts.push('<span class="label">Domain registered</span>'); }
+                    if (d.iocs && d.iocs.length > 0) {
+                      parts.push('<br><span class="label">' + d.iocs.length + ' IOC(s) found:</span><ul>');
+                      d.iocs.forEach(function(ioc) { parts.push('<li>' + ioc.ioc_type.toUpperCase() + ': ' + ioc.ioc_value + '</li>'); });
+                      parts.push('</ul>');
+                    }
+                    if (d.subdomains && d.subdomains.length > 0) {
+                      parts.push('<span class="label">' + d.subdomains.length + ' subdomain(s) found:</span><ul>');
+                      d.subdomains.forEach(function(s) { parts.push('<li>' + s + '</li>'); });
+                      parts.push('</ul>');
+                    }
+                    if (parts.length === 0) { parts.push('<span class="label">Initial data captured.</span>'); }
+                    el.innerHTML += parts.join('');
+                  } catch(e) {}
+                })();
+              </script>
+              {% endif %}
+            {% elif event['change_type'] == 'records_changed' %}
+              <script>
+                (function() {
+                  try {
+                    var oldVal = {{ event['old_value'] | tojson | safe }};
+                    var newVal = {{ event['new_value'] | tojson | safe }};
+                    var oldD = (typeof oldVal === 'string') ? JSON.parse(oldVal) : oldVal;
+                    var newD = (typeof newVal === 'string') ? JSON.parse(newVal) : newVal;
+                    var el = document.currentScript.parentElement;
+                    var fields = ['registrar','status','creation_date','expiration_date','updated_date'];
+                    var parts = [];
+                    fields.forEach(function(f) {
+                      var ov = JSON.stringify(oldD[f]||'N/A'); var nv = JSON.stringify(newD[f]||'N/A');
+                      if (ov !== nv) { parts.push('<span class="label">' + f.replace(/_/g,' ') + ':</span> <span class="diff-old">' + ov.replace(/"/g,'') + '</span> → <span class="diff-new">' + nv.replace(/"/g,'') + '</span><br>'); }
+                    });
+                    var oldIps = ((oldD.main_ips||{}).ipv4||[]).concat((oldD.main_ips||{}).ipv6||[]).join(', ');
+                    var newIps = ((newD.main_ips||{}).ipv4||[]).concat((newD.main_ips||{}).ipv6||[]).join(', ');
+                    if (oldIps !== newIps) { parts.push('<span class="label">Main IPs:</span> <span class="diff-old">' + (oldIps||'None') + '</span> → <span class="diff-new">' + (newIps||'None') + '</span><br>'); }
+                    if (parts.length) el.innerHTML += parts.join('');
+                    else el.innerHTML += '<span class="label">DNS/WHOIS records updated</span>';
+                  } catch(e) {}
+                })();
+              </script>
+            {% elif event['change_type'] == 'content_changed' %}
+              <span class="label">Hash:</span>
+              <span class="diff-old">{{ event['old_value'][:16] }}…</span> →
+              <span class="diff-new">{{ event['new_value'][:16] }}…</span>
+            {% elif event['change_type'] == 'new_iocs' %}
+              <script>
+                (function() {
+                  try {
+                    var raw = {{ event['new_value'] | tojson | safe }};
+                    var iocs = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+                    var el = document.currentScript.parentElement;
+                    var parts = ['<ul>'];
+                    iocs.forEach(function(ioc) { parts.push('<li>' + ioc.ioc_type.toUpperCase() + ': ' + ioc.ioc_value + '</li>'); });
+                    parts.push('</ul>');
+                    el.innerHTML += parts.join('');
+                  } catch(e) {}
+                })();
+              </script>
+            {% elif event['change_type'] == 'new_subdomains' %}
+              <script>
+                (function() {
+                  try {
+                    var raw = {{ event['new_value'] | tojson | safe }};
+                    var subs = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+                    var el = document.currentScript.parentElement;
+                    var parts = ['<ul>'];
+                    subs.forEach(function(s) { parts.push('<li>' + s + '</li>'); });
+                    parts.push('</ul>');
+                    el.innerHTML += parts.join('');
+                  } catch(e) {}
+                })();
+              </script>
+            {% endif %}
+          </div>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty-state">No changes recorded yet.</div>
+      {% endif %}
+    </div>
+  </div>
+</body>
+</html>

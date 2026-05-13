@@ -1,0 +1,393 @@
+{
+  "info": {
+    "_postman_id": "7cf88b15-968e-47e8-a44b-ecf3ba0b9a68",
+    "name": "TIP \u2014 integrations",
+    "description": "Wazuh SIEM and MISP threat sharing integration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "Source Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "sources"
+              ],
+              "variable": []
+            },
+            "description": "Source Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "misp",
+      "item": [
+        {
+          "name": "List Events",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/misp/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "misp",
+                "events"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Events"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Event",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/misp/events/{event_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "misp",
+                "events",
+                ":event_id"
+              ],
+              "variable": [
+                {
+                  "key": "event_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Event"
+          },
+          "response": []
+        },
+        {
+          "name": "List Iocs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/misp/iocs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "misp",
+                "iocs"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Iocs"
+          },
+          "response": []
+        },
+        {
+          "name": "Sync",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/misp/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "misp",
+                "sync"
+              ],
+              "variable": []
+            },
+            "description": "Sync"
+          },
+          "response": []
+        },
+        {
+          "name": "Push Iocs",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/misp/push",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "misp",
+                "push"
+              ],
+              "variable": []
+            },
+            "description": "Push specific IOCs to MISP (or all high-confidence ones if list is empty).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"indicator_ids\": [\n    \"00000000-0000-0000-0000-000000000000\"\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "wazuh",
+      "item": [
+        {
+          "name": "List Alerts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wazuh/alerts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wazuh",
+                "alerts"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "severity_gte",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "agent_id",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Alerts"
+          },
+          "response": []
+        },
+        {
+          "name": "List Agents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wazuh/agents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wazuh",
+                "agents"
+              ],
+              "variable": []
+            },
+            "description": "List Agents"
+          },
+          "response": []
+        },
+        {
+          "name": "Sync",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wazuh/sync",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wazuh",
+                "sync"
+              ],
+              "variable": []
+            },
+            "description": "Sync"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8006",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

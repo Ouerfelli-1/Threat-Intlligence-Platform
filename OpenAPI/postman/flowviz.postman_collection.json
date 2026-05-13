@@ -1,0 +1,167 @@
+{
+  "info": {
+    "_postman_id": "be5493e5-9788-466f-862f-e4e3d46de21f",
+    "name": "TIP \u2014 flowviz",
+    "description": "Threat description \u2192 ATT&CK attack flow (nodes & edges)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "flows",
+      "item": [
+        {
+          "name": "Generate Flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/flows",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "flows"
+              ],
+              "variable": []
+            },
+            "description": "Generate Flow",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"input\": \"string\",\n  \"system\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Stream Flow",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/flows/stream",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "flows",
+                "stream"
+              ],
+              "variable": []
+            },
+            "description": "Returns a Server-Sent Events stream of the raw AI output.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"input\": \"string\",\n  \"system\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Flow",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/flows/{flow_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "flows",
+                ":flow_id"
+              ],
+              "variable": [
+                {
+                  "key": "flow_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Flow"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8008",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

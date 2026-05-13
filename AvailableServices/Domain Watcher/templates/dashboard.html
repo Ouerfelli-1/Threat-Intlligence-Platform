@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DomainWatch — Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #0f172a;
+      color: #e2e8f0;
+    }
+
+    .sidebar {
+      background-color: #1e293b;
+      border-right: 1px solid #334155;
+    }
+
+    .domain-item {
+      padding: 12px 16px;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      transition: background-color 0.15s;
+    }
+
+    .domain-item:hover {
+      background-color: #0f172a;
+    }
+
+    .domain-item.active {
+      background-color: #1e3a8a;
+      border-left: 3px solid #3b82f6;
+    }
+
+    .add-form input,
+    .add-form select {
+      background-color: #0f172a;
+      border-color: #475569;
+      color: #e2e8f0;
+    }
+
+    .add-form input:focus,
+    .add-form select:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .tab-btn {
+      padding: 10px 16px;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s;
+      color: #94a3b8;
+    }
+
+    .tab-btn:hover {
+      color: #cbd5e1;
+    }
+
+    .tab-btn.active {
+      color: #3b82f6;
+      border-bottom-color: #3b82f6;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .badge-active {
+      background-color: #10b981;
+      color: #ecfdf5;
+    }
+
+    .badge-inactive {
+      background-color: #ef4444;
+      color: #fef2f2;
+    }
+
+    .badge-pending {
+      background-color: #f59e0b;
+      color: #fffbeb;
+    }
+
+    .btn-action {
+      padding: 6px 12px;
+      border: 1px solid transparent;
+      background-color: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      border-radius: 4px;
+      transition: all 0.15s;
+      font-size: 12px;
+    }
+
+    .btn-action:hover {
+      color: #e2e8f0;
+      border-color: #475569;
+      background-color: #1e293b;
+    }
+
+    .btn-action.danger:hover {
+      color: #ef4444;
+      border-color: #ef4444;
+      background-color: rgba(239, 68, 68, 0.1);
+    }
+
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #475569;
+      border-top-color: #3b82f6;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    .empty-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: #64748b;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+  <!-- SIDEBAR -->
+  <div class="sidebar w-80 flex flex-col overflow-hidden">
+    <!-- Header -->
+    <div class="p-6 border-b border-slate-700">
+      <h1 class="text-2xl font-bold text-white mb-4">DomainWatch</h1>
+      <div class="flex items-center justify-between text-sm">
+        <span class="text-slate-400">{{ username }}</span>
+        <a href="/logout" class="text-xs px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded transition">
+          Logout
+        </a>
+      </div>
+    </div>
+
+    <!-- Add Domain Form -->
+    <div class="p-4 border-b border-slate-700 add-form space-y-2">
+      <form action="/domains/add" method="post" class="flex flex-col gap-2">
+        <input
+          type="text"
+          name="name"
+          placeholder="domain.com"
+          required
+          pattern="^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$"
+          title="Enter a valid domain name (e.g. example.com)"
+          class="px-3 py-2 text-sm rounded border"
+        />
+        <input
+          type="text"
+          name="case_id"
+          placeholder="Case ID"
+          class="px-3 py-2 text-sm rounded border"
+        />
+        <select name="source_id" class="px-3 py-2 text-sm rounded border">
+          <option value="">Source</option>
+          {% for src in sources %}
+          <option value="{{ src['id'] }}">{{ src['name'] }}</option>
+          {% endfor %}
+        </select>
+        <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition">
+          Add
+        </button>
+      </form>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex border-b border-slate-700">
+      <button class="tab-btn active" onclick="switchTab('active')">ACTIVE</button>
+      <button class="tab-btn" onclick="switchTab('archived')">ARCHIVED</button>
+    </div>
+
+    <!-- Domain List -->
+    <div class="flex-1 overflow-y-auto" id="domainList">
+      {% for domain in domains %}
+      <div
+        class="domain-item"
+        data-id="{{ domain['id'] }}"
+        data-archived="{{ domain['archived'] or 0 }}"
+        onclick="loadDomain({{ domain['id'] }})"
+        {% if domain['archived'] %}style="display:none"{% endif %}
+      >
+        <div class="flex items-start justify-between mb-1">
+          <div class="font-semibold text-white truncate">{{ domain['name'] }}</div>
+          <span class="badge {% if domain['status'] == 'active' %}badge-active{% elif domain['status'] == 'inactive' %}badge-inactive{% else %}badge-pending{% endif %}">
+            {% if domain['status'] == 'active' %}Active{% elif domain['status'] == 'inactive' %}Inactive{% else %}Pending{% endif %}
+          </span>
+        </div>
+        <div class="text-xs text-slate-400 space-y-0.5">
+          {% if domain['case_id'] %}<div>Case: {{ domain['case_id'] }}</div>{% endif %}
+          {% if domain['source_name'] %}<div>{{ domain['source_name'] }}</div>{% endif %}
+          <div>Added: {{ domain['created_at'][:10] if domain['created_at'] else 'N/A' }}</div>
+        </div>
+      </div>
+      {% endfor %}
+      {% if not domains %}
+      <div class="p-6 text-center text-slate-500 text-sm">
+        No domains yet. Add one to get started.
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="flex-1 flex flex-col overflow-hidden">
+    <!-- Top Bar -->
+    <div class="bg-slate-900 border-b border-slate-700 px-8 py-4 flex items-center justify-between">
+      <h2 id="pageTitle" class="text-2xl font-bold text-white">Dashboard</h2>
+    </div>
+
+    <!-- Content Area -->
+    <div class="flex-1 overflow-y-auto">
+      <div id="emptyState" class="empty-state">
+        Select a domain to view details
+      </div>
+      <div id="detailPanel" style="display: none;" class="max-w-5xl mx-auto p-8"></div>
+    </div>
+  </div>
+
+  <script>
+    let currentTab = 'active';
+    let activeDomain = null;
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent.toLowerCase().includes(tab));
+      });
+      document.querySelectorAll('[data-id]').forEach(item => {
+        const isArchived = item.dataset.archived === '1';
+        item.style.display = (tab === 'active' && !isArchived) || (tab === 'archived' && isArchived) ? '' : 'none';
+      });
+    }
+
+    function loadDomain(id) {
+      activeDomain = id;
+      document.querySelectorAll('.domain-item').forEach(el => el.classList.remove('active'));
+      document.querySelector(`[data-id="${id}"]`).classList.add('active');
+
+      fetch(`/api/domains/${id}`)
+        .then(r => r.json())
+        .then(data => renderDetail(data))
+        .catch(e => console.error(e));
+    }
+
+    function renderDetail(data) {
+      const d = data.domain;
+      const details = data.details || {};
+      const history = data.history || [];
+      const subdomains = data.subdomains || [];
+      const iocs = data.iocs || [];
+
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('pageTitle').textContent = d.name;
+
+      let html = `
+        <div class="space-y-6">
+          <!-- Header Card -->
+          <div class="bg-slate-900 border border-slate-700 rounded-lg p-6">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h1 class="text-3xl font-bold text-white mb-2">${escapeHtml(d.name)}</h1>
+                <span class="badge ${d.status === 'active' ? 'badge-active' : d.status === 'inactive' ? 'badge-inactive' : 'badge-pending'}">
+                  ${escapeHtml(d.status ? d.status.charAt(0).toUpperCase() + d.status.slice(1) : 'Unknown')}
+                </span>
+              </div>
+              <form action="/domains/${d.archived ? 'restore' : 'archive'}/${parseInt(d.id, 10)}" method="post">
+                <button type="submit" class="btn-action ${d.archived ? '' : 'danger'}">
+                  ${d.archived ? '↻ Restore' : '✕ Archive'}
+                </button>
+              </form>
+            </div>
+            ${d.case_id ? `<p class="text-slate-400">Case ID: <span class="text-white font-mono">${escapeHtml(d.case_id)}</span></p>` : ''}
+          </div>
+
+          <!-- Domain Intelligence Grid -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-slate-900 border border-slate-700 rounded-lg p-6">
+              <h3 class="text-lg font-semibold text-white mb-4 pb-3 border-b border-slate-700">Domain Intelligence</h3>
+              ${details.domain ? `
+                <table class="w-full text-sm">
+                  <tr><td class="text-slate-400 py-2 w-32">Registrar:</td><td class="text-white">${escapeHtml(details.registrar || 'N/A')}</td></tr>
+                  <tr><td class="text-slate-400 py-2">Status:</td><td class="text-white">${escapeHtml((details.status || []).join(', ') || 'N/A')}</td></tr>
+                  <tr><td class="text-slate-400 py-2">Created:</td><td class="text-white">${escapeHtml(details.creation_date || 'N/A')}</td></tr>
+                  <tr><td class="text-slate-400 py-2">Expires:</td><td class="text-white">${escapeHtml(details.expiration_date || 'N/A')}</td></tr>
+                  <tr><td class="text-slate-400 py-2">IPv4:</td><td class="text-white font-mono text-xs">${escapeHtml((details.main_ips?.ipv4 || []).join(', ') || 'None')}</td></tr>
+                  <tr><td class="text-slate-400 py-2">IPv6:</td><td class="text-white font-mono text-xs">${escapeHtml((details.main_ips?.ipv6 || []).join(', ') || 'None')}</td></tr>
+                  <tr><td class="text-slate-400 py-2">Nameservers:</td><td class="text-white font-mono text-xs">${(details.nameservers || []).map(ns => {
+                    let s = escapeHtml(ns.host || '');
+                    const nips = ((ns.ips?.ipv4 || []).concat(ns.ips?.ipv6 || []));
+                    if (nips.length) s += ' <span class="text-slate-500">(' + escapeHtml(nips.join(', ')) + ')</span>';
+                    return s;
+                  }).join('<br>') || 'None'}</td></tr>
+                  <tr><td class="text-slate-400 py-2">MX:</td><td class="text-white font-mono text-xs">${(details.mx_records || []).map(mx => escapeHtml((mx.host || 'N/A') + ' (pri ' + mx.priority + ')')).join('<br>') || 'None'}</td></tr>
+                </table>
+              ` : (d.status === 'unknown' ? '<p class="text-slate-500 italic">Waiting for first check...</p>' : '<p class="text-slate-500 italic">No WHOIS data available for this domain.</p>')}
+            </div>
+
+            <div class="bg-slate-900 border border-slate-700 rounded-lg p-6">
+              <h3 class="text-lg font-semibold text-white mb-4 pb-3 border-b border-slate-700">Stats</h3>
+              <div class="space-y-3">
+                <div class="bg-slate-800 rounded p-4">
+                  <div class="text-3xl font-bold text-blue-400">${iocs.length}</div>
+                  <div class="text-xs text-slate-400 mt-1">Indicators Detected</div>
+                </div>
+                <div class="bg-slate-800 rounded p-4">
+                  <div class="text-3xl font-bold text-green-400">${subdomains.length}</div>
+                  <div class="text-xs text-slate-400 mt-1">Subdomains Found</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Screenshot -->
+          <div class="bg-slate-900 border border-slate-700 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 pb-3 border-b border-slate-700">Screenshot</h3>
+            ${data.screenshot_url ? `
+              <img src="${escapeHtml(data.screenshot_url)}" alt="screenshot" class="w-full rounded border border-slate-700" />
+            ` : '<p class="text-slate-500 italic">No screenshot available.</p>'}
+          </div>
+
+          <!-- IOCs & Subdomains -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="bg-slate-900 border border-slate-700 rounded-lg p-6">
+              <h3 class="text-lg font-semibold text-white mb-4 pb-3 border-b border-slate-700">IOCs (${iocs.length})</h3>
+              ${iocs.length > 0 ? `
+                <div class="max-h-64 overflow-y-auto">
+                  <table class="w-full text-xs">
+                    <thead><tr class="text-slate-400"><th class="text-left pb-2">Type</th><th class="text-left pb-2">Value</th><th class="text-left pb-2">Seen</th></tr></thead>
+                    <tbody class="divide-y divide-slate-700">
+                      ${iocs.map(i => `<tr><td class="py-2 text-blue-400 font-mono">${escapeHtml(i.ioc_type)}</td><td class="text-slate-300 font-mono">${escapeHtml(i.ioc_value)}</td><td class="text-slate-500">${escapeHtml((i.first_seen_at || '').slice(0, 10))}</td></tr>`).join('')}
+                    </tbody>
+                  </table>
+                </div>
+              ` : '<p class="text-slate-500 italic">No IOCs discovered.</p>'}
+            </div>
+
+            <div class="bg-slate-900 border border-slate-700 rounded-lg p-6">
+              <h3 class="text-lg font-semibold text-white mb-4 pb-3 border-b border-slate-700">Subdomains (${subdomains.length})</h3>
+              ${subdomains.length > 0 ? `
+                <div class="max-h-64 overflow-y-auto space-y-1">
+                  ${subdomains.map(s => `<div class="py-2 text-slate-300 font-mono text-xs border-b border-slate-700"><div class="flex flex-wrap items-center gap-2"><span>${escapeHtml(s.subdomain)}</span>${s.is_resolving ? '<span class="px-2 py-0.5 rounded-full bg-emerald-950 text-emerald-300 border border-emerald-800 text-[10px] uppercase tracking-wide">resolving</span>' : '<span class="px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 border border-slate-700 text-[10px] uppercase tracking-wide">no dns answer</span>'}${s.is_delegated ? '<span class="px-2 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-800 text-[10px] uppercase tracking-wide">delegated</span>' : ''}${s.wildcard_match ? '<span class="px-2 py-0.5 rounded-full bg-fuchsia-950 text-fuchsia-300 border border-fuchsia-800 text-[10px] uppercase tracking-wide">wildcard</span>' : ''}</div><div class="text-slate-500 text-xs mt-0.5">First seen: ${escapeHtml((s.first_seen_at || '').slice(0, 10))}${s.last_checked_at ? ` • Checked: ${escapeHtml((s.last_checked_at || '').slice(0, 10))}` : ''}</div><div class="text-slate-400 text-xs mt-1">${s.cname_target ? `CNAME ${escapeHtml(s.cname_target)}` : ''}${s.a_records && s.a_records.length ? `${s.cname_target ? ' • ' : ''}A ${escapeHtml(s.a_records.join(', '))}` : ''}${s.aaaa_records && s.aaaa_records.length ? `${(s.cname_target || (s.a_records && s.a_records.length)) ? ' • ' : ''}AAAA ${escapeHtml(s.aaaa_records.join(', '))}` : ''}${s.ns_records && s.ns_records.length ? `${(s.cname_target || (s.a_records && s.a_records.length) || (s.aaaa_records && s.aaaa_records.length)) ? ' • ' : ''}NS ${escapeHtml(s.ns_records.join(', '))}` : ''}${s.soa_record ? `${(s.cname_target || (s.a_records && s.a_records.length) || (s.aaaa_records && s.aaaa_records.length) || (s.ns_records && s.ns_records.length)) ? ' • ' : ''}SOA ${escapeHtml(s.soa_record)}` : ''}${s.last_error ? `${(s.cname_target || (s.a_records && s.a_records.length) || (s.aaaa_records && s.aaaa_records.length) || (s.ns_records && s.ns_records.length) || s.soa_record) ? ' • ' : ''}Error ${escapeHtml(s.last_error)}` : ''}</div></div>`).join('')}
+                </div>
+              ` : '<p class="text-slate-500 italic">No subdomains discovered.</p>'}
+            </div>
+          </div>
+
+          <!-- Timeline -->
+          <div class="bg-slate-900 border border-slate-700 rounded-lg p-6">
+            <h3 class="text-lg font-semibold text-white mb-4 pb-3 border-b border-slate-700">Activity Timeline</h3>
+            ${history.length > 0 ? `
+              <div class="space-y-4">
+                ${history.slice(0, 20).map(e => `
+                  <div class="flex gap-4 pb-4 border-b border-slate-700 last:border-b-0">
+                    <div class="text-2xl">
+                      ${e.change_type === 'initial_entry' || e.change_type === 'new_detection' ? '✓' : 
+                        e.change_type === 'records_changed' ? '⚠' :
+                        e.change_type === 'content_changed' ? '♦' :
+                        e.change_type === 'new_iocs' ? '⚡' : '★'}
+                    </div>
+                    <div class="flex-1">
+                      <div class="font-medium text-white text-sm">${escapeHtml(e.change_type.replace(/_/g, ' ').toUpperCase())}</div>
+                      <div class="text-xs text-slate-500 mt-1">${escapeHtml((e.changed_at || '').slice(0, 16))}</div>
+                      <div class="text-xs text-slate-400 mt-2">${renderEventDetail(e)}</div>
+                    </div>
+                  </div>
+                `).join('')}
+              </div>
+            ` : '<p class="text-slate-500 italic">No activity yet.</p>'}
+          </div>
+        </div>
+      `;
+
+      document.getElementById('detailPanel').innerHTML = html;
+      document.getElementById
+      ('detailPanel').style.display = 'block';
+    }
+
+    function escapeHtml(text) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+      return String(text).replace(/[&<>"']/g, m => map[m]);
+    }
+
+    function renderEventDetail(ev) {
+      const ct = ev.change_type;
+      try {
+        if (ct === 'initial_entry' || ct === 'new_detection') {
+          const raw = ev.new_value;
+          if (!raw) return '';
+          const d = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+          let out = '';
+          if (d.details) out += '<span class="text-green-400">Domain registered</span><br>';
+          if (d.iocs && d.iocs.length) {
+            out += `<span class="text-purple-400">${d.iocs.length} IOC(s):</span> `;
+            out += d.iocs.map(i => `${escapeHtml(i.ioc_type.toUpperCase())}: ${escapeHtml(i.ioc_value)}`).join(', ');
+            out += '<br>';
+          }
+          if (d.subdomains && d.subdomains.length) {
+            out += `<span class="text-cyan-400">${d.subdomains.length} subdomain(s)</span>`;
+          }
+          return out || '<span class="text-green-400">Initial data captured</span>';
+        }
+        if (ct === 'records_changed') {
+          const oldD = (typeof ev.old_value === 'string') ? JSON.parse(ev.old_value) : ev.old_value;
+          const newD = (typeof ev.new_value === 'string') ? JSON.parse(ev.new_value) : ev.new_value;
+          let out = '';
+          ['registrar','status','creation_date','expiration_date','updated_date'].forEach(f => {
+            const ov = JSON.stringify(oldD[f] || 'N/A'), nv = JSON.stringify(newD[f] || 'N/A');
+            if (ov !== nv) out += `<span class="text-slate-500">${escapeHtml(f.replace(/_/g,' '))}:</span> <span class="text-red-400 line-through">${escapeHtml(ov.replace(/"/g,''))}</span> → <span class="text-green-400">${escapeHtml(nv.replace(/"/g,''))}</span><br>`;
+          });
+          const o4 = ((oldD.main_ips||{}).ipv4||[]).join(', '), n4 = ((newD.main_ips||{}).ipv4||[]).join(', ');
+          if (o4 !== n4) out += `<span class="text-slate-500">IPv4:</span> <span class="text-red-400">${escapeHtml(o4||'None')}</span> → <span class="text-green-400">${escapeHtml(n4||'None')}</span><br>`;
+          const o6 = ((oldD.main_ips||{}).ipv6||[]).join(', '), n6 = ((newD.main_ips||{}).ipv6||[]).join(', ');
+          if (o6 !== n6) out += `<span class="text-slate-500">IPv6:</span> <span class="text-red-400">${escapeHtml(o6||'None')}</span> → <span class="text-green-400">${escapeHtml(n6||'None')}</span><br>`;
+          const oNs = (oldD.nameservers||[]).map(ns => ns.host||'').join(', ');
+          const nNs = (newD.nameservers||[]).map(ns => ns.host||'').join(', ');
+          if (oNs !== nNs) out += `<span class="text-slate-500">NS:</span> <span class="text-red-400">${escapeHtml(oNs||'None')}</span> → <span class="text-green-400">${escapeHtml(nNs||'None')}</span><br>`;
+          return out || '<span class="text-slate-500">DNS/WHOIS updated</span>';
+        }
+        if (ct === 'content_changed') {
+          return `<span class="text-slate-500">Hash:</span> <span class="text-red-400">${escapeHtml((ev.old_value||'').slice(0,16))}…</span> → <span class="text-green-400">${escapeHtml((ev.new_value||'').slice(0,16))}…</span>`;
+        }
+        if (ct === 'new_iocs') {
+          const arr = (typeof ev.new_value === 'string') ? JSON.parse(ev.new_value) : ev.new_value;
+          return arr.map(i => `${escapeHtml(i.ioc_type.toUpperCase())}: ${escapeHtml(i.ioc_value)}`).join('<br>');
+        }
+        if (ct === 'new_subdomains') {
+          const arr = (typeof ev.new_value === 'string') ? JSON.parse(ev.new_value) : ev.new_value;
+          return arr.map(s => escapeHtml(s)).join('<br>');
+        }
+      } catch(e) {}
+      return '';
+    }
+
+    // Polling for loading domains
+    let _pollTimer = null;
+    let _wasLoading = false;
+
+    function pollStatus() {
+      fetch('/status/')
+        .then(r => {
+          if (r.redirected || !r.ok) {
+            // Session expired or auth failed — stop polling
+            if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+            if (r.redirected) window.location.href = '/login';
+            return;
+          }
+          return r.json();
+        })
+        .then(data => {
+          if (!data) return;
+          if (data.status !== 'idle') {
+            _wasLoading = true;
+          } else if (_wasLoading) {
+            if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+            window.location.reload();
+          }
+        })
+        .catch(() => {
+          if (_pollTimer) { clearInterval(_pollTimer); _pollTimer = null; }
+        });
+    }
+
+    if (document.querySelector('.domain-item[data-archived="0"] .spinner')) {
+      _wasLoading = true;
+      _pollTimer = setInterval(pollStatus, 2500);
+      pollStatus();
+    }
+
+    // Check if any active domains have pending status
+    const hasPending = document.querySelector('.domain-item[data-archived="0"] .badge-pending');
+    if (hasPending) {
+      _wasLoading = true;
+      _pollTimer = setInterval(pollStatus, 2500);
+      pollStatus();
+    }
+
+    // Add form via AJAX
+    const _domainRe = /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/;
+    document.querySelector('.add-form form').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const nameInput = this.querySelector('input[name="name"]');
+      const val = (nameInput.value || '').trim().toLowerCase();
+      if (!val || !_domainRe.test(val)) {
+        nameInput.setCustomValidity('Enter a valid domain (e.g. example.com)');
+        nameInput.reportValidity();
+        return;
+      }
+      nameInput.setCustomValidity('');
+      const fd = new FormData(this);
+      fetch('/domains/add', { method: 'POST', body: fd, redirect: 'follow' })
+        .then(() => window.location.reload())
+        .catch(() => window.location.reload());
+    });
+  </script>
+</body>
+</html>

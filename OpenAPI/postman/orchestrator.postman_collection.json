@@ -1,0 +1,361 @@
+{
+  "info": {
+    "_postman_id": "3f2d3e78-c596-4523-8d17-ab276d3edd35",
+    "name": "TIP \u2014 orchestrator",
+    "description": "AI intelligence synthesis \u2014 CVE relevance, actor likelihood, correlations, executive briefs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "analyze",
+      "item": [
+        {
+          "name": "Trigger Analysis",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analyze",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analyze"
+              ],
+              "variable": []
+            },
+            "description": "Trigger Analysis"
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Geo",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/analyze/geo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "analyze",
+                "geo"
+              ],
+              "variable": []
+            },
+            "description": "Trigger Geo"
+          },
+          "response": []
+        },
+        {
+          "name": "Ask",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ask",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ask"
+              ],
+              "variable": []
+            },
+            "description": "Ask",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"question\": \"string\",\n  \"cve_id\": \"string\",\n  \"ioc\": \"string\",\n  \"actor\": \"string\",\n  \"text\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Reports",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "kind",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "page",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "page_size",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Reports"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/reports/{report_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "reports",
+                ":report_id"
+              ],
+              "variable": [
+                {
+                  "key": "report_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Report"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Cve Relevance",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/relevance/cves",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relevance",
+                "cves"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get Cve Relevance"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Actor Likelihood",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/relevance/actors",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "relevance",
+                "actors"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get Actor Likelihood"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Correlations",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/correlations",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "correlations"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get Correlations"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "Source Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "sources"
+              ],
+              "variable": []
+            },
+            "description": "Source Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8014",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

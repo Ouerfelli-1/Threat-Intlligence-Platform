@@ -1,0 +1,561 @@
+{
+  "info": {
+    "_postman_id": "436234af-5da9-4b22-b33d-8541d00cca88",
+    "name": "TIP \u2014 threat-actors",
+    "description": "Threat actor library \u2014 MITRE ATT&CK, ransomware groups, tools and TTPs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "actors",
+      "item": [
+        {
+          "name": "List Actors",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/actors",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actors"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "sector",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "country",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "motivation",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Actors"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Actor",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/actors/{actor_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actors",
+                ":actor_id"
+              ],
+              "variable": [
+                {
+                  "key": "actor_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Actor"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Actor Insight",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/actors/{actor_id}/insight",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actors",
+                ":actor_id",
+                "insight"
+              ],
+              "variable": [
+                {
+                  "key": "actor_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Actor Insight"
+          },
+          "response": []
+        },
+        {
+          "name": "List Actor Ttps",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/actors/{actor_id}/ttps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "actors",
+                ":actor_id",
+                "ttps"
+              ],
+              "variable": [
+                {
+                  "key": "actor_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "List Actor Ttps"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "health",
+      "item": [
+        {
+          "name": "Source Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health/sources",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health",
+                "sources"
+              ],
+              "variable": []
+            },
+            "description": "Source Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "ingest",
+      "item": [
+        {
+          "name": "Trigger Refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "refresh"
+              ],
+              "variable": []
+            },
+            "description": "Scheduler trigger: incremental refresh (MITRE + groups + recent victims)."
+          },
+          "response": []
+        },
+        {
+          "name": "Trigger Full Refresh",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/refresh/full",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "refresh",
+                "full"
+              ],
+              "variable": []
+            },
+            "description": "First-boot / reconciliation trigger: full historical pull (~80k victims)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "meta",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ],
+              "variable": []
+            },
+            "description": "Health"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "ransomware",
+      "item": [
+        {
+          "name": "List Groups",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ransomware/groups",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ransomware",
+                "groups"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Groups"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Group",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ransomware/groups/{group_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ransomware",
+                "groups",
+                ":group_id"
+              ],
+              "variable": [
+                {
+                  "key": "group_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Group"
+          },
+          "response": []
+        },
+        {
+          "name": "List Victims",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ransomware/victims",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ransomware",
+                "victims"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "group_id",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "since",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "country",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "sector",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Victims"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "tools",
+      "item": [
+        {
+          "name": "List Tools",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tools",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tools"
+              ],
+              "variable": [],
+              "query": [
+                {
+                  "key": "type",
+                  "value": "",
+                  "description": "malware or tool",
+                  "disabled": true
+                },
+                {
+                  "key": "limit",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "List Tools"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Tool",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/tools/{tool_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "tools",
+                ":tool_id"
+              ],
+              "variable": [
+                {
+                  "key": "tool_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Get Tool"
+          },
+          "response": []
+        },
+        {
+          "name": "Actors Using Technique",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/ttps/{technique_id}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "ttps",
+                ":technique_id"
+              ],
+              "variable": [
+                {
+                  "key": "technique_id",
+                  "value": ""
+                }
+              ]
+            },
+            "description": "Returns actors that use the given ATT&CK technique."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8005",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}
