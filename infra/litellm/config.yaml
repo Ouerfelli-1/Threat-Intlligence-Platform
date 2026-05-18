@@ -1,0 +1,49 @@
+# LiteLLM proxy config.
+#
+# A single wildcard model entry lets clients ask for ANY model id (e.g.
+# `github/gpt-4o-mini`, `anthropic/claude-3-5-haiku-20241022`, `openai/gpt-4o`)
+# and LiteLLM routes it to the right upstream provider using whichever API
+# key the entrypoint injected into the environment.
+#
+# The proxy reads keys from:
+#   GITHUB_API_KEY        — for github/* (your GitHub PAT with models:read scope)
+#   OPENAI_API_KEY        — for openai/*
+#   ANTHROPIC_API_KEY     — for anthropic/*
+#   OPENROUTER_API_KEY    — for openrouter/*
+#   GROQ_API_KEY, GEMINI_API_KEY, MISTRAL_API_KEY, DEEPSEEK_API_KEY, ...
+#
+# These are populated at container startup by entrypoint.sh from the TIP
+# secrets vault — they are never present in this file or in docker-compose.
+
+model_list:
+  - model_name: "*"                # catch-all
+    litellm_params:
+      model: "*"                   # forward the client's requested model id verbatim
+
+litellm_settings:
+  # Quietly drop request params that a given provider doesn't understand
+  # (e.g. response_format=json_object on providers that don't support it).
+  drop_params: true
+  # Don't log full prompts/responses by default.
+  set_verbose: false
+  # Per-request timeout (seconds). Beyond this, LiteLLM returns 504.
+  request_timeout: 120
+  # Capture token usage in /metrics if Prometheus is wired up later.
+  success_callback: []
+  failure_callback: []
+
+general_settings:
+  # All clients must present this in Authorization: Bearer <key>.
+  # The entrypoint sets LITELLM_MASTER_KEY from the TIP secrets vault.
+  master_key: os.environ/LITELLM_MASTER_KEY
+
+# Fallbacks — used when an upstream provider returns 5xx / 429 / auth error.
+# Each entry: { primary_model: [fallback_1, fallback_2, ...] }
+# These run server-side inside the proxy so clients don't have to know about them.
+router_settings:
+  fallbacks:
+    - "*":                          # default for ANY primary
+        - "openrouter/openai/gpt-4o-mini"
+        - "openrouter/anthropic/claude-3-5-haiku"
+  num_retries: 1
+  timeout: 60

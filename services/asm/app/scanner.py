@@ -45,8 +45,14 @@ async def _scan_scope(
     session.add(job)
     await session.flush()
 
+    # Only scan active targets — `active=false` means the analyst paused this
+    # specific entry (the scope itself was already filtered to active in run_scan).
     targets_result = await session.execute(
-        select(Target).where(Target.scope_id == scope.id, Target.type == "domain")
+        select(Target).where(
+            Target.scope_id == scope.id,
+            Target.type == "domain",
+            Target.active.is_(True),
+        )
     )
     domains = [t.value for t in targets_result.scalars().all()]
 

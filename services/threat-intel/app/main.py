@@ -2,12 +2,12 @@ from fastapi import FastAPI
 
 from tip_auth import JWTAuthMiddleware
 from tip_cache import Cache
-from tip_common import create_service_app, wire_auth
+from tip_common import build_notes_router, create_service_app, wire_auth
 from tip_secrets import SecretsClient
 from tip_source_health import SourceHealthRepository
 
-from app.db import close_engine, get_session_factory, init_engine
-from app.models import SourceHealth
+from app.db import close_engine, get_session, get_session_factory, init_engine
+from app.models import SourceHealth, ThreatNote
 from app.routes import health, ingest, threats
 from app.settings import get_settings
 
@@ -67,6 +67,18 @@ app.add_middleware(
     tip_env=settings.tip_env,
 )
 
+threat_notes_router = build_notes_router(
+    prefix="/threats",
+    resource_id_param="threat_id",
+    note_model=ThreatNote,
+    resource_id_column="threat_id",
+    perm_read="threats:read",
+    perm_write="threats:write",
+    get_session=get_session,
+    tags=["threats"],
+)
+
 app.include_router(threats.router)
+app.include_router(threat_notes_router)
 app.include_router(ingest.router)
 app.include_router(health.router)

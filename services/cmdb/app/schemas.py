@@ -56,6 +56,8 @@ class Identity(BaseModel):
     hq_country: str
     countries_of_operation: list[str] = Field(default_factory=list)
     public_domains: list[str] = Field(default_factory=list)
+    public_ip_ranges: list[str] = Field(default_factory=list)
+    asn_numbers: list[str] = Field(default_factory=list)
     language: str = "en"
 
 
@@ -121,3 +123,54 @@ class CompanyProfilePatch(BaseModel):
     compliance: Compliance | None = None
     geopolitical: Geopolitical | None = None
     risk: Risk | None = None
+
+
+class AutoAddRequest(BaseModel):
+    source_resource_type: str
+    source_resource_id: str
+    product_name: str | None = None
+    actor: str | None = None
+
+
+class ProfileChangeLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    version: int
+    change_type: str
+    source_resource_type: str | None
+    source_resource_id: str | None
+    added_value: str | None
+    added_by_analyst: str | None
+    recorded_at: datetime
+
+
+# ---- Tag catalog ----
+
+# Resource types that can carry tags. Frontend tag-picker filters by these.
+TAG_SCOPES = {"ioc", "asset", "feed", "actor", "threat", "article", "cve"}
+
+
+class TagCreate(BaseModel):
+    name: str = Field(..., min_length=1, max_length=64)
+    description: str | None = None
+    color: str | None = Field(None, max_length=16, description="Hex like #58a6ff")
+    scopes: list[str] = Field(default_factory=list, description="Subset of: ioc, asset, feed, actor, threat, article, cve")
+
+
+class TagUpdate(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=64)
+    description: str | None = None
+    color: str | None = Field(None, max_length=16)
+    scopes: list[str] | None = None
+
+
+class TagOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: uuid.UUID
+    name: str
+    description: str | None
+    color: str | None
+    scopes: list[str]
+    created_at: datetime
+    updated_at: datetime
+    created_by: str | None

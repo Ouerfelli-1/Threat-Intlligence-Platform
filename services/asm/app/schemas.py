@@ -27,6 +27,21 @@ class TargetCreate(BaseModel):
     type: str
     value: str
     description: str | None = None
+    active: bool = True
+
+
+class TargetUpdate(BaseModel):
+    """Partial update for a target — currently used to toggle `active`."""
+    active: bool | None = None
+    description: str | None = None
+
+
+class ScopeUpdate(BaseModel):
+    """Partial update for a scope — `active` is the pause toggle."""
+    name: str | None = None
+    description: str | None = None
+    config: dict[str, Any] | None = None
+    active: bool | None = None
 
 
 class TargetOut(BaseModel):
@@ -35,6 +50,7 @@ class TargetOut(BaseModel):
     type: str
     value: str
     description: str | None
+    active: bool
     added_at: datetime
 
     model_config = {"from_attributes": True}

@@ -14,6 +14,7 @@ class IndicatorOut(BaseModel):
     last_seen: datetime
     tags: list[str]
     confidence_score: float
+    analyst_status: str = "unreviewed"
 
 
 class IndicatorWithSources(IndicatorOut):
@@ -49,3 +50,22 @@ class IngestResult(BaseModel):
     indicators_added: int
     indicators_updated: int
     failed_sources: list[str]
+
+
+class AnalystStatusUpdate(BaseModel):
+    analyst_status: str = Field(..., pattern=r"^(unreviewed|relevant|not_relevant|escalated|reviewed)$")
+
+
+class AnalyzeRequest(BaseModel):
+    actions: list[str] | None = None
+    flowviz: bool = False
+    model: str | None = None
+
+
+class IndicatorCreateManual(BaseModel):
+    type: str = Field(..., pattern=r"^(ip|domain|url|sha256|sha1|md5)$")
+    value: str = Field(..., min_length=1)
+    malware_family: str | None = None
+    threat_type: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    notes: str | None = None

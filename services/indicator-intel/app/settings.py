@@ -14,6 +14,7 @@ class Settings(BaseServiceSettings):
     intelowl_url: str = ""
     intelowl_api_key: str = ""
     otx_api_key: str = ""
+    abuseipdb_api_key: str = ""
 
 
 def get_settings() -> Settings:

@@ -1,7 +1,8 @@
+import uuid
 from datetime import datetime, date
 
 from sqlalchemy import Boolean, Date, DateTime, Numeric, String, Text, func
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from tip_db import build_metadata
@@ -29,6 +30,9 @@ class CVE(Base):
     references: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False, default=list)
     fetched_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    analyst_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="unreviewed"
     )
 
 
@@ -62,6 +66,23 @@ class CVEInsight(Base):
     model_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    analyst_override: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+
+class CVENote(Base):
+    __tablename__ = "cve_notes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    cve_id: Mapped[str] = mapped_column(String(20), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    author: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 

@@ -9,6 +9,7 @@ class Settings(BaseServiceSettings):
     database_schema: str = "threat"
 
     cmdb_url: str = "http://cmdb:8007"
+    orchestrator_url: str = "http://orchestrator:8014"
 
 
 @lru_cache

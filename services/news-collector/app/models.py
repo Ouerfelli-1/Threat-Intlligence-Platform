@@ -28,6 +28,11 @@ class Feed(Base):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     last_pulled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Tags applied to every article ingested from this feed. Merged with the
+    # per-article keyword-detected tags so analysts can curate source-level
+    # labels (e.g. all CISA-ICS articles get tagged "ics", supply-chain feeds
+    # get tagged "supply_chain").
+    tags: Mapped[list] = mapped_column(ARRAY(String), nullable=False, server_default="{}")
 
 
 class Article(Base):
@@ -49,11 +54,12 @@ class Article(Base):
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     confidence_score: Mapped[float | None] = mapped_column(Numeric(3, 2), nullable=True)
     confidence_inputs: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
-    # SHA256(content_text). When this changes on re-fetch we treat the article as
-    # enriched: refresh summary/tags and invalidate any cached AI insight.
     content_hash: Mapped[str | None] = mapped_column(String(64), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    analyst_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="unreviewed"
     )
 
 
@@ -65,6 +71,23 @@ class ArticleInsight(Base):
     model_name: Mapped[str | None] = mapped_column(String(128), nullable=True)
     prompt_version: Mapped[str | None] = mapped_column(String(32), nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    analyst_override: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+
+class ArticleNote(Base):
+    __tablename__ = "article_notes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    article_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    author: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
 

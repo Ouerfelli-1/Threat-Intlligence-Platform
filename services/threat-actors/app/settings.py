@@ -9,6 +9,8 @@ class Settings(BaseServiceSettings):
     database_schema: str = "actors"
 
     malpedia_api_token: str = ""
+    orchestrator_url: str = "http://orchestrator:8014"
+    scheduler_url: str = "http://scheduler:8011"
 
 
 @lru_cache

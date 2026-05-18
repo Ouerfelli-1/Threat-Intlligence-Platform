@@ -1,13 +1,26 @@
 """
 Fetches MITRE ATT&CK STIX bundles (enterprise + ICS + mobile) and upserts
 actors (intrusion-sets), tools (tools + malware), and TTP relationships.
+
+Field-mapping notes:
+ - `description` -> persisted to `actors.description` (MITRE's own actor profile text)
+ - `aliases` -> first item is the canonical name; remaining entries become aliases
+ - `created` (STIX) -> approximate active_since
+ - `modified` (STIX) -> approximate last_seen
+ - `origin_country` is left NULL by default. MITRE does NOT store this in STIX
+   intrusion-set objects. We only set it if `x_mitre_attributed_country` is
+   present (custom MITRE field on some entries).
+ - `target_sectors` is NOT taken from `x_mitre_domains` (those are kill-chain
+   domains: enterprise / ics / mobile, not industries). Left empty unless we
+   can infer from description.
 """
 import logging
+import re
 import uuid
 from datetime import date
 
 import httpx
-from sqlalchemy import select, text
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,6 +37,47 @@ STIX_URLS = {
     "mobile": "https://raw.githubusercontent.com/mitre/cti/master/mobile-attack/mobile-attack.json",
 }
 
+# Keywords -> normalized sector tags. Used to scrape "target_sectors" from
+# MITRE's free-text description when no structured field exists.
+_SECTOR_KEYWORDS = {
+    "finance": ["financial", "bank", "banking", "fintech", "atm", "swift"],
+    "government": ["government", "ministry", "diplomat", "embassy", "state agencies"],
+    "defense": ["defense", "defence", "military", "aerospace", "weapon"],
+    "energy": ["energy", "oil", "gas", "utility", "utilities", "electric grid", "power grid"],
+    "telecom": ["telecommunication", "telecom", "isp", "internet service provider"],
+    "healthcare": ["health", "hospital", "pharmaceutical", "medical"],
+    "technology": ["technology firm", "software vendor", "cloud provider", "msp"],
+    "education": ["university", "academic", "research institution", "education"],
+    "retail": ["retail", "e-commerce", "ecommerce", "point of sale", "pos"],
+    "manufacturing": ["manufactur", "industrial", "automotive", "factory"],
+    "media": ["media", "press", "journalist", "broadcaster"],
+    "ngo": ["ngo", "non-governmental", "non-profit", "nonprofit", "human rights"],
+    "transportation": ["aviation", "airline", "maritime", "shipping", "logistics"],
+    "critical_infrastructure": ["critical infrastructure", "scada", "ot networks"],
+}
+
+# Country regex map: matches both ISO names and common synonyms.
+# Used to scrape target countries from description prose.
+_COUNTRY_KEYWORDS = {
+    "United States": ["united states", "u\\.s\\.", " us ", "american", "usa"],
+    "United Kingdom": ["united kingdom", "u\\.k\\.", "british", " uk "],
+    "Russia": ["russia", "russian"],
+    "China": ["china", "chinese"],
+    "Iran": ["iran", "iranian"],
+    "North Korea": ["north korea", "north korean", "dprk"],
+    "Israel": ["israel", "israeli"],
+    "Ukraine": ["ukraine", "ukrainian"],
+    "France": ["france", "french"],
+    "Germany": ["germany", "german"],
+    "Saudi Arabia": ["saudi arabia", "saudi"],
+    "Turkey": ["turkey", "turkish"],
+    "India": ["india", "indian"],
+    "Japan": ["japan", "japanese"],
+    "South Korea": ["south korea", "south korean", " rok "],
+    "Australia": ["australia", "australian"],
+    "Canada": ["canada", "canadian"],
+}
+
 
 def _parse_date(s: str | None) -> date | None:
     if not s:
@@ -34,11 +88,57 @@ def _parse_date(s: str | None) -> date | None:
         return None
 
 
-def _extract_text(obj: dict, field: str) -> str | None:
-    val = obj.get(field)
-    if isinstance(val, list):
-        return val[0].get("value") if val else None
-    return val
+def _scrape_sectors(description: str | None) -> list[str]:
+    if not description:
+        return []
+    desc_low = description.lower()
+    out: list[str] = []
+    for sector, keywords in _SECTOR_KEYWORDS.items():
+        if any(k in desc_low for k in keywords):
+            out.append(sector)
+    return out
+
+
+def _scrape_countries(description: str | None) -> list[str]:
+    if not description:
+        return []
+    desc_low = description.lower()
+    out: list[str] = []
+    for country, patterns in _COUNTRY_KEYWORDS.items():
+        if any(re.search(p, desc_low) for p in patterns):
+            out.append(country)
+    return out
+
+
+def _extract_motivation(obj: dict) -> list[str]:
+    """STIX 2.1 motivation fields. MITRE rarely populates these on intrusion-sets,
+    so most actors will return an empty list — that's expected and correct."""
+    motivations: list[str] = []
+    for field in ("primary_motivation", "secondary_motivations", "goals"):
+        val = obj.get(field)
+        if not val:
+            continue
+        if isinstance(val, list):
+            motivations.extend(str(v).strip().lower() for v in val if v)
+        else:
+            motivations.append(str(val).strip().lower())
+    return list(dict.fromkeys(motivations))
+
+
+def _extract_origin_country(obj: dict) -> str | None:
+    """MITRE's STIX bundle does not encode actor origin in a stable structured
+    field. The historical bug was harvesting x_mitre_contributors which lists
+    credit names. We leave origin null unless a structured field is present."""
+    for field in (
+        "x_mitre_attributed_country",       # speculative, not actually in MITRE
+        "country",                          # never in upstream MITRE bundles
+    ):
+        val = obj.get(field)
+        if isinstance(val, str) and val:
+            return val.strip()
+        if isinstance(val, list) and val and isinstance(val[0], str):
+            return val[0].strip()
+    return None
 
 
 async def _fetch_bundle(source_key: str, url: str, client: httpx.AsyncClient) -> dict:
@@ -58,7 +158,7 @@ async def sync_mitre_attack(session: AsyncSession, health: SourceHealthRepositor
                 count = await _process_bundle(session, bundle, source_name)
                 await health.mark_success(source_name)
                 total += count
-                log.info("mitre_attack domain=%s objects_processed=%d", domain, count)
+                log.info("mitre_attack domain=%s actors_processed=%d", domain, count)
             except Exception as exc:
                 log.error("mitre_attack domain=%s error=%s", domain, exc)
                 await health.mark_failure(source_name, str(exc))
@@ -69,13 +169,12 @@ async def sync_mitre_attack(session: AsyncSession, health: SourceHealthRepositor
 async def _process_bundle(session: AsyncSession, bundle: dict, source_name: str) -> int:
     objects = bundle.get("objects", [])
 
-    # Index techniques for relationship resolution
     technique_map: dict[str, dict] = {}
     for obj in objects:
         if obj.get("type") in ("attack-pattern",):
             technique_map[obj["id"]] = obj
 
-    # Upsert tools and malware first (they can be referenced by actors)
+    # Upsert tools / malware first
     tool_stix_to_db: dict[str, uuid.UUID] = {}
     for obj in objects:
         if obj.get("type") not in ("tool", "malware"):
@@ -122,38 +221,50 @@ async def _upsert_actor(session: AsyncSession, obj: dict) -> uuid.UUID:
             mitre_id = ext_ref.get("external_id")
             break
 
-    aliases = obj.get("aliases", [])
-    if obj["name"] in aliases:
-        aliases.remove(obj["name"])
+    aliases = list(obj.get("aliases", []) or [])
+    canonical_name = obj.get("name", "").strip()
+    # MITRE puts the canonical name as the first alias; trim duplicates.
+    aliases = [a for a in aliases if a and a != canonical_name]
+
+    description = obj.get("description") or None
+    scraped_sectors = _scrape_sectors(description)
+    scraped_countries = _scrape_countries(description)
 
     values = {
-        "name": obj["name"],
+        "name": canonical_name,
         "aliases": aliases,
-        "origin_country": obj.get("x_mitre_contributors", [None])[0] if obj.get("x_mitre_contributors") else None,
+        "origin_country": _extract_origin_country(obj),
+        "description": description,
         "motivation": _extract_motivation(obj),
-        "target_sectors": _extract_sectors(obj),
-        "target_countries": [],
+        "active_since": _parse_date(obj.get("first_seen") or obj.get("created")),
+        "last_seen": _parse_date(obj.get("last_seen") or obj.get("modified")),
+        "target_sectors": scraped_sectors,
+        "target_countries": scraped_countries,
         "status": "inactive" if obj.get("x_mitre_deprecated") else "active",
         "raw": {k: v for k, v in obj.items() if k not in ("id", "type")},
     }
 
-    # Try to find existing actor by mitre_id
     existing = None
     if mitre_id:
-        result = await session.execute(
-            select(Actor).where(Actor.mitre_id == mitre_id)
-        )
+        result = await session.execute(select(Actor).where(Actor.mitre_id == mitre_id))
         existing = result.scalar_one_or_none()
+
+    if existing is None:
+        # Fall back to name match (deduplicates pre-existing rows that lack mitre_id)
+        result = await session.execute(select(Actor).where(Actor.name == canonical_name))
+        existing = result.scalar_one_or_none()
+        if existing and mitre_id and not existing.mitre_id:
+            existing.mitre_id = mitre_id
 
     if existing:
         for k, v in values.items():
             setattr(existing, k, v)
         return existing.id
-    else:
-        new_actor = Actor(id=uuid.uuid4(), mitre_id=mitre_id, **values)
-        session.add(new_actor)
-        await session.flush()
-        return new_actor.id
+
+    new_actor = Actor(id=uuid.uuid4(), mitre_id=mitre_id, **values)
+    session.add(new_actor)
+    await session.flush()
+    return new_actor.id
 
 
 async def _upsert_tool(session: AsyncSession, obj: dict) -> uuid.UUID:
@@ -163,18 +274,18 @@ async def _upsert_tool(session: AsyncSession, obj: dict) -> uuid.UUID:
             mitre_id = ext_ref.get("external_id")
             break
 
-    aliases = obj.get("x_mitre_aliases", [])
-    if obj["name"] in aliases:
-        aliases.remove(obj["name"])
+    aliases = list(obj.get("x_mitre_aliases", []) or [])
+    canonical_name = obj.get("name", "").strip()
+    aliases = [a for a in aliases if a and a != canonical_name]
 
     result = await session.execute(
         select(Tool).where(Tool.mitre_id == mitre_id) if mitre_id
-        else select(Tool).where(Tool.name == obj["name"])
+        else select(Tool).where(Tool.name == canonical_name)
     )
     existing = result.scalar_one_or_none()
 
     values = {
-        "name": obj["name"],
+        "name": canonical_name,
         "aliases": aliases,
         "type": obj["type"],
         "mitre_id": mitre_id,
@@ -186,11 +297,11 @@ async def _upsert_tool(session: AsyncSession, obj: dict) -> uuid.UUID:
         for k, v in values.items():
             setattr(existing, k, v)
         return existing.id
-    else:
-        new_tool = Tool(id=uuid.uuid4(), **values)
-        session.add(new_tool)
-        await session.flush()
-        return new_tool.id
+
+    new_tool = Tool(id=uuid.uuid4(), **values)
+    session.add(new_tool)
+    await session.flush()
+    return new_tool.id
 
 
 async def _upsert_actor_ttp(session: AsyncSession, actor_id: uuid.UUID, tech: dict, source: str) -> None:
@@ -222,23 +333,3 @@ async def _upsert_actor_tool(session: AsyncSession, actor_id: uuid.UUID, tool_id
         tool_id=tool_id,
     ).on_conflict_do_nothing(constraint="pk_actors_actor_tools")
     await session.execute(stmt)
-
-
-def _extract_motivation(obj: dict) -> list[str]:
-    motivations = []
-    for field in ("primary_motivation", "secondary_motivations", "goals"):
-        val = obj.get(field)
-        if not val:
-            continue
-        if isinstance(val, list):
-            motivations.extend(str(v) for v in val)
-        else:
-            motivations.append(str(val))
-    return list(dict.fromkeys(motivations))
-
-
-def _extract_sectors(obj: dict) -> list[str]:
-    sectors = obj.get("x_mitre_domains", [])
-    if isinstance(sectors, str):
-        sectors = [sectors]
-    return sectors

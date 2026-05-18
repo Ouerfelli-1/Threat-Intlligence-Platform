@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -20,6 +22,16 @@ def init_engine(settings=None) -> None:
 def get_session_factory() -> sessionmaker:
     assert _session_factory is not None, "Engine not initialized"
     return _session_factory
+
+
+async def get_session() -> AsyncIterator[AsyncSession]:
+    async with get_session_factory()() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
 
 
 async def close_engine() -> None:

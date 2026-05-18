@@ -1,11 +1,12 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Request
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tip_auth import require_permission
+from tip_common import extract_run_id, run_with_callback
 from tip_db import get_session
 
 from app.analysis import run_adhoc_ask, run_analysis_cycle, run_geo_prediction
@@ -40,16 +41,24 @@ SessionDep = Annotated[AsyncSession, Depends(_session_dep)]
     status_code=202,
     dependencies=[Depends(require_permission("reports:write"))],
 )
-async def trigger_analysis(request: Request, background: BackgroundTasks):
+async def trigger_analysis(
+    request: Request,
+    background: BackgroundTasks,
+    body: dict | None = Body(None),
+):
     ai = request.app.state.ai_client
     settings = request.app.state.settings
     service_jwt = getattr(request.app.state, "service_jwt", "")
-    run_id = uuid.uuid4()
+    scheduler_run_id = extract_run_id(body)
+    run_id = uuid.UUID(scheduler_run_id) if scheduler_run_id else uuid.uuid4()
 
-    async def _run():
-        await run_analysis_cycle(ai, settings, service_jwt)
-
-    background.add_task(_run)
+    background.add_task(
+        run_with_callback,
+        lambda: run_analysis_cycle(ai, settings, service_jwt),
+        scheduler_url=settings.scheduler_url,
+        run_id=str(run_id),
+        service_jwt=service_jwt,
+    )
     return AnalysisJobResponse(run_id=run_id)
 
 
@@ -59,16 +68,24 @@ async def trigger_analysis(request: Request, background: BackgroundTasks):
     status_code=202,
     dependencies=[Depends(require_permission("reports:write"))],
 )
-async def trigger_geo(request: Request, background: BackgroundTasks):
+async def trigger_geo(
+    request: Request,
+    background: BackgroundTasks,
+    body: dict | None = Body(None),
+):
     ai = request.app.state.ai_client
     settings = request.app.state.settings
     service_jwt = getattr(request.app.state, "service_jwt", "")
-    run_id = uuid.uuid4()
+    scheduler_run_id = extract_run_id(body)
+    run_id = uuid.UUID(scheduler_run_id) if scheduler_run_id else uuid.uuid4()
 
-    async def _run():
-        await run_geo_prediction(ai, settings, service_jwt)
-
-    background.add_task(_run)
+    background.add_task(
+        run_with_callback,
+        lambda: run_geo_prediction(ai, settings, service_jwt),
+        scheduler_url=settings.scheduler_url,
+        run_id=str(run_id),
+        service_jwt=service_jwt,
+    )
     return AnalysisJobResponse(run_id=run_id)
 
 
@@ -92,7 +109,7 @@ async def ask(body: AskRequest, request: Request):
     if body.text:
         context["additional_context"] = body.text
 
-    return await run_adhoc_ask(ai, body.question, profile, context, settings)
+    return await run_adhoc_ask(ai, body.question, profile, context, settings, service_jwt)
 
 
 @router.get(

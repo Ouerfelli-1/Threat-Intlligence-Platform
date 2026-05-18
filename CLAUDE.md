@@ -53,7 +53,7 @@ python infra/bootstrap/smoke_test.py
 | `tip_http` | httpx wrapper + `fetch_with_resilience` (retry, circuit breaker, timeout) |
 | `tip_source_health` | `SourceHealthRepository` class + per-service `source_health` table builder |
 | `tip_schemas` | Indicator normalization, confidence config, `AIInsight` schema |
-| `tip_ai` | OpenRouter client, `ContextProvider` protocol, `generate_insight()` |
+| `tip_ai` | `LiteLLMClient` (HTTP → proxy, default), legacy `OpenRouterClient`, `ContextProvider` protocol, `generate_insight()` |
 
 ## Service catalog
 
@@ -76,15 +76,17 @@ python infra/bootstrap/smoke_test.py
 | secrets | 8012 | `secrets` | Fernet-encrypted vault; bootstrap endpoint supports single-secret and bulk modes |
 | indicator-intel | 8013 | `indicator` | Parallel passive sources (ip-api, Shodan, crt.sh, WHOIS, IOC DB, actors, articles, IntelOwl); AI verdict |
 | orchestrator | 8014 | `orchestrator` | 4-step AI cycle (CVE relevance → actor likelihood → correlation → brief); geo prediction; /ask |
+| litellm | 4000 | _(none)_ | Standalone AI gateway proxy (ghcr.io/berriai/litellm:main-stable). Receives OpenAI-format requests, routes to upstream providers using keys it pulls from the secrets vault at startup. Master key shared with TIP services via `LITELLM_MASTER_KEY`. Healthcheck: `/health/liveliness`. |
 
 ## Bootstrap order (first deploy)
 
 1. Postgres, PgBouncer, Redis come up.
 2. `alembic-init` runs all per-service migrations, then exits.
 3. `secrets` starts (uses `FERNET_KEY`, validates `SECRETS_BOOTSTRAP_TOKEN`).
-4. `infra/bootstrap/seed_secrets.py` is run (creates RS256 keypair, per-service bootstrap tokens, seeds `credentials.env`).
-5. `auth` starts, calls `POST secrets/internal/bootstrap-fetch` for its RS256 keys.
-6. Every other service starts, fetches its own `SVC_<NAME>_BOOTSTRAP_TOKEN`, then `POST auth/service-login` to get a service JWT.
+4. `infra/bootstrap/seed_secrets.py` is run (creates RS256 keypair, per-service bootstrap tokens, `LITELLM_MASTER_KEY`, seeds `credentials.env`).
+5. `litellm` starts, fetches every provider API key + `LITELLM_MASTER_KEY` from secrets via `/internal/bootstrap-fetch`, then launches the proxy on `:4000`.
+6. `auth` starts, calls `POST secrets/internal/bootstrap-fetch` for its RS256 keys.
+7. Every other service starts, fetches its own `SVC_<NAME>_BOOTSTRAP_TOKEN`, then `POST auth/service-login` to get a service JWT. AI-consuming services additionally fetch `LITELLM_MASTER_KEY` and build a `LiteLLMClient` pointed at `http://litellm:4000`.
 
 Until `auth` and `secrets` ship, run with `DISABLE_AUTH=true` and read secrets directly from env where needed.
 

@@ -8,6 +8,7 @@ from uuid import UUID
 from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tip_auth import require_permission
@@ -16,7 +17,7 @@ from tip_db import get_session
 from app.db import get_session_factory
 from app.models import Change, Domain, Snapshot
 from app.monitor.jobs import _monitor_domain
-from app.schemas import ChangeOut, DomainCreate, DomainOut, SnapshotOut
+from app.schemas import ChangeOut, DomainCreate, DomainOut, DomainUpdate, SnapshotOut
 
 router = APIRouter(prefix="/domains", tags=["domains"])
 
@@ -39,9 +40,23 @@ async def list_domains(session: SessionDep):
 
 @router.post("", response_model=DomainOut, status_code=201, dependencies=[Depends(require_permission("domainwatch:write"))])
 async def create_domain(body: DomainCreate, session: SessionDep):
-    domain = Domain(id=uuid.uuid4(), name=body.name.lower().strip())
+    from fastapi import HTTPException
+    name = body.name.lower().strip()
+    # Return existing domain if already tracked (idempotent creation)
+    existing = (await session.execute(select(Domain).where(Domain.name == name))).scalar_one_or_none()
+    if existing:
+        return existing
+    domain = Domain(id=uuid.uuid4(), name=name)
     session.add(domain)
-    await session.commit()
+    try:
+        await session.commit()
+    except IntegrityError:
+        await session.rollback()
+        # Another concurrent request inserted it — fetch and return it
+        existing = (await session.execute(select(Domain).where(Domain.name == name))).scalar_one_or_none()
+        if existing:
+            return existing
+        raise HTTPException(status_code=409, detail=f"Domain '{name}' already exists")
     return domain
 
 
@@ -55,6 +70,22 @@ async def delete_domain(domain_id: UUID, session: SessionDep):
         raise NotFoundError(f"Domain {domain_id} not found")
     await session.delete(domain)
     await session.commit()
+
+
+@router.patch("/{domain_id}", response_model=DomainOut, dependencies=[Depends(require_permission("domainwatch:write"))])
+async def update_domain(domain_id: UUID, body: DomainUpdate, session: SessionDep):
+    """Toggle archive state. Setting active=false stops the scheduler from
+    visiting the domain; setting active=true puts it back on the watch list."""
+    from tip_common import NotFoundError
+
+    result = await session.execute(select(Domain).where(Domain.id == domain_id))
+    domain = result.scalar_one_or_none()
+    if not domain:
+        raise NotFoundError(f"Domain {domain_id} not found")
+    if body.active is not None:
+        domain.active = body.active
+    await session.commit()
+    return domain
 
 
 @router.get("/{domain_id}", response_model=DomainOut, dependencies=[Depends(require_permission("domainwatch:read"))])

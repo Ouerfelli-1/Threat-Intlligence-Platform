@@ -50,9 +50,15 @@ class RoleUpdate(BaseModel):
 
 
 class UserOut(BaseModel):
+    """Flat user shape that the frontend expects. `role` is the role NAME, not
+    the full role object — historical bug surfaced as 'Objects are not valid as
+    a React child'."""
     id: UUID
     username: str
-    role: RoleOut
+    email: Optional[str] = None
+    role: str
+    role_id: UUID
+    permissions: list[str] = []
     supplementary_permissions: list[str]
     active: bool
     created_at: datetime
@@ -83,7 +89,8 @@ class PermissionGrant(BaseModel):
 class ServiceAccountOut(BaseModel):
     id: UUID
     name: str
-    role: RoleOut
+    role: str
+    role_id: UUID
     supplementary_permissions: list[str]
     created_at: datetime
 
@@ -93,6 +100,7 @@ class ServiceAccountOut(BaseModel):
 class SessionOut(BaseModel):
     id: UUID
     user_id: UUID
+    username: Optional[str] = None
     issued_at: datetime
     expires_at: datetime
     revoked: bool

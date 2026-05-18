@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from tip_ai import OpenRouterClient
+from tip_ai import build_ai_client
 from tip_auth import JWTAuthMiddleware
 from tip_cache import Cache
 from tip_common import create_service_app, wire_auth
@@ -27,7 +27,6 @@ async def _startup(app: FastAPI) -> None:
         bootstrap_token=settings.secrets_bootstrap_token,
     )
 
-    openrouter_key = await secrets.get_optional("OPENROUTER_API_KEY") or ""
     shodan_key = await secrets.get_optional("SHODAN_API_KEY") or ""
     intelowl_url = await secrets.get_optional("INTELOWL_URL") or ""
     intelowl_key = await secrets.get_optional("INTELOWL_API_KEY") or ""
@@ -36,10 +35,24 @@ async def _startup(app: FastAPI) -> None:
     settings.intelowl_url = intelowl_url
     settings.intelowl_api_key = intelowl_key
 
-    app.state.ai_client = OpenRouterClient(
-        api_key=openrouter_key,
-        model="anthropic/claude-haiku-4.5",
-    )
+    ai_secrets: dict[str, str] = {}
+    # LITELLM_MASTER_KEY: required by the LiteLLM proxy (default client mode).
+    # Provider keys are kept for the legacy ai_provider=openrouter path.
+    for k in (
+        "LITELLM_MASTER_KEY",
+        "OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "GROQ_API_KEY", "GEMINI_API_KEY", "MISTRAL_API_KEY",
+        "COHERE_API_KEY", "TOGETHER_API_KEY", "DEEPSEEK_API_KEY",
+        "GITHUB_API_KEY",
+    ):
+        ai_secrets[k] = await secrets.get_optional(k) or ""
+    primary_override = await secrets.get_optional("AI_PRIMARY_MODEL")
+    if primary_override:
+        settings.ai_primary_model = primary_override
+    fallbacks_override = await secrets.get_optional("AI_FALLBACK_MODELS")
+    if fallbacks_override is not None:
+        settings.ai_fallback_models = fallbacks_override
+    app.state.ai_client = build_ai_client(ai_secrets, settings)
     await secrets.close()
 
     app.state.source_health = SourceHealthRepository(

@@ -2,12 +2,12 @@ from fastapi import FastAPI
 
 from tip_auth import JWTAuthMiddleware
 from tip_cache import Cache
-from tip_common import create_service_app, wire_auth
+from tip_common import build_notes_router, create_service_app, wire_auth
 from tip_secrets import SecretsClient
 from tip_source_health import SourceHealthRepository
 
-from app.db import close_engine, get_session_factory, init_engine
-from app.models import SourceHealth
+from app.db import close_engine, get_session, get_session_factory, init_engine
+from app.models import IndicatorNote, SourceHealth
 from app.routes import health, indicators, ingest
 from app.settings import get_settings
 
@@ -64,6 +64,18 @@ app.add_middleware(
     tip_env=settings.tip_env,
 )
 
+indicator_notes_router = build_notes_router(
+    prefix="/indicators",
+    resource_id_param="indicator_id",
+    note_model=IndicatorNote,
+    resource_id_column="indicator_id",
+    perm_read="iocs:read",
+    perm_write="iocs:write",
+    get_session=get_session,
+    tags=["indicators"],
+)
+
 app.include_router(indicators.router)
+app.include_router(indicator_notes_router)
 app.include_router(ingest.router)
 app.include_router(health.router)

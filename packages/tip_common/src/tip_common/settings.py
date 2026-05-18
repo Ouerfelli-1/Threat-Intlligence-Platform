@@ -26,3 +26,34 @@ class BaseServiceSettings(BaseSettings):
     auth_url: str = Field(default="http://auth:8000")
     auth_public_key: str = Field(default="", description="RS256 public key (PEM); fetched if blank")
     disable_auth: bool = False
+
+    # AI provider config — used by build_ai_client() in tip_ai.factory.
+    # `litellm` (default): unified gateway, supports OpenAI / Anthropic / Groq /
+    #                      Gemini / Mistral / Cohere / OpenRouter / etc. Picks
+    #                      provider based on `ai_primary_model`.
+    # `openrouter` (legacy): force the historical OpenRouter client.
+    ai_provider: Literal["litellm", "openrouter"] = "litellm"
+    ai_primary_model: str = Field(
+        default="anthropic/claude-3-5-haiku-20241022",
+        description="Primary model identifier (LiteLLM-format: '<provider>/<model>')",
+    )
+    ai_fallback_models: str = Field(
+        default="",
+        description=(
+            "Comma-separated ordered list of fallback models. Empty defaults to "
+            "[openrouter/<primary>] if OPENROUTER_API_KEY is set."
+        ),
+    )
+    ai_openrouter_model: str = Field(
+        default="anthropic/claude-3-5-haiku",
+        description="Legacy: model used when ai_provider='openrouter'",
+    )
+
+    # LiteLLM proxy — the standalone gateway service that fronts every upstream
+    # provider. Services POST OpenAI-format requests to this URL; the master key
+    # comes from the secrets vault (LITELLM_MASTER_KEY) and is supplied to
+    # build_ai_client() at startup, not via env var.
+    litellm_proxy_url: str = Field(
+        default="http://litellm:4000",
+        description="Base URL of the LiteLLM proxy (e.g. http://litellm:4000)",
+    )

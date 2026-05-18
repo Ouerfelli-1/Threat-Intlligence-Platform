@@ -7,6 +7,7 @@ class Settings(BaseServiceSettings):
     database_schema: str = "news"
 
     cmdb_url: str = "http://cmdb:8007"
+    orchestrator_url: str = "http://orchestrator:8014"
     orchestrator_model: str = "anthropic/claude-haiku-4.5"
     user_agent: str = "TIP-NewsCollector/0.1 (+https://tip.local)"
 

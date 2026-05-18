@@ -94,6 +94,12 @@ def _build_secret_payload(creds: dict[str, str]) -> dict[str, str]:
         key = f"SVC_{svc.upper().replace('-', '_')}_BOOTSTRAP_TOKEN"
         if key not in payload:
             payload[key] = pysecrets.token_urlsafe(32)
+    # LiteLLM proxy master key — shared between the proxy (validates incoming
+    # Authorization headers) and every TIP service that POSTs to the proxy.
+    # Auto-generated if not provided via credentials.env so first-boot
+    # deployments work out of the box; rotate later from the Settings UI.
+    if "LITELLM_MASTER_KEY" not in payload:
+        payload["LITELLM_MASTER_KEY"] = pysecrets.token_urlsafe(32)
     return payload
 
 

@@ -41,21 +41,27 @@ class Target(Base):
     type: Mapped[str] = mapped_column(sa.String(32), nullable=False)  # domain|subdomain|ip|cidr|asn|tls_cert
     value: Mapped[str] = mapped_column(sa.String(512), nullable=False)
     description: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    # Per-target pause toggle. Inactive targets stay in the DB (so removing the
+    # pause restores history) but the scanner skips them. Default true means
+    # existing rows continue to be scanned without a backfill.
+    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default="true")
     added_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
 
 
 class Job(Base):
     __tablename__ = "jobs"
     __table_args__ = (
+        # CASCADE on delete: scope removal triggers job removal, which
+        # cascades into findings via Finding.job_id. See migration 0002.
         sa.ForeignKeyConstraint(
-            ["scope_id"], ["asm.scopes.id"], ondelete="SET NULL",
+            ["scope_id"], ["asm.scopes.id"], ondelete="CASCADE",
             name="fk_asm_jobs_scope_id",
         ),
         {"schema": SCHEMA},
     )
 
     id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    scope_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    scope_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
     status: Mapped[str] = mapped_column(sa.String(32), nullable=False, server_default="pending")
     started_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)
     completed_at: Mapped[sa.DateTime | None] = mapped_column(sa.DateTime(timezone=True), nullable=True)

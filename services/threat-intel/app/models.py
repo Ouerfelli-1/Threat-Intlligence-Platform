@@ -29,6 +29,8 @@ class Threat(Base):
     details: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     confidence_score: Mapped[float] = mapped_column(sa.Numeric(3, 2), nullable=False, server_default="0.50")
     confidence_inputs: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    analyst_status: Mapped[str] = mapped_column(sa.String(32), nullable=False, server_default="unreviewed")
+    manual_source: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
 
 
 class HIBPBreach(Base):
@@ -61,6 +63,20 @@ class ThreatInsight(Base):
     model_name: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     prompt_version: Mapped[str] = mapped_column(sa.String(32), nullable=False)
     generated_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    analyst_override: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+
+class ThreatNote(Base):
+    __tablename__ = "threat_notes"
+    __table_args__ = {"schema": SCHEMA}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    threat_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    author: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    created_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
 
 
 class SourceHealth(Base):

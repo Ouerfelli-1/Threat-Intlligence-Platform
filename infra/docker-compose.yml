@@ -23,6 +23,7 @@ x-service-defaults: &service-defaults
     SCHEDULER_URL: http://scheduler:8011
     INDICATOR_INTEL_URL: http://indicator-intel:8013
     ORCHESTRATOR_URL: http://orchestrator:8014
+    LITELLM_PROXY_URL: http://litellm:4000
   depends_on:
     pgbouncer:
       condition: service_healthy
@@ -36,6 +37,9 @@ x-service-defaults: &service-defaults
 services:
   postgres:
     image: postgres:16-alpine
+    # Auto-recover on host reboot OR container crash — without this every reboot
+    # leaves the platform offline until someone runs `docker compose up -d`.
+    restart: unless-stopped
     environment:
       POSTGRES_USER: tip
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -47,9 +51,12 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      # Give postgres up to 90s to recover crash state before being marked unhealthy
+      start_period: 90s
 
   pgbouncer:
     image: edoburu/pgbouncer:v1.25.1-p0
+    restart: unless-stopped
     environment:
       DB_USER: tip
       DB_PASSWORD: ${POSTGRES_PASSWORD}
@@ -61,6 +68,10 @@ services:
       DEFAULT_POOL_SIZE: 30
       LISTEN_PORT: 6432
       AUTH_TYPE: scram-sha-256
+      # If postgres briefly disappears, keep retrying instead of giving up.
+      SERVER_RESET_QUERY: DISCARD ALL
+      SERVER_LIFETIME: 3600
+      SERVER_IDLE_TIMEOUT: 600
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,14 +80,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 30s
 
   redis:
     image: redis:7-alpine
+    restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
       timeout: 5s
       retries: 10
+      start_period: 15s
 
   alembic-init:
     build:
@@ -88,6 +102,33 @@ services:
       postgres:
         condition: service_healthy
     restart: "no"
+
+  # LiteLLM proxy — single AI gateway in front of all upstream providers
+  # (Anthropic, OpenAI, Groq, Gemini, GitHub Models, OpenRouter, etc).
+  # Apps call http://litellm:4000/v1/chat/completions with an OpenAI-format
+  # body; the proxy routes the model id to the right provider, handles
+  # fallbacks, and exposes a single Bearer-token auth surface.
+  # Keys are pulled from the secrets vault at startup by entrypoint.sh.
+  litellm:
+    restart: unless-stopped
+    build:
+      context: ..
+      dockerfile: infra/litellm/Dockerfile
+    environment:
+      SECRETS_URL: http://secrets:8012
+      SECRETS_BOOTSTRAP_TOKEN: ${SECRETS_BOOTSTRAP_TOKEN}
+      LITELLM_PORT: "4000"
+    ports:
+      - "4000:4000"
+    depends_on:
+      secrets:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:4000/health/liveliness"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
 
   secrets:
     <<: *service-defaults
@@ -247,6 +288,11 @@ services:
       dockerfile: services/orchestrator/Dockerfile
     ports:
       - "8014:8014"
+    # NOTE: do NOT add an `environment:` block here — Compose's YAML merge
+    # REPLACES the inherited mapping instead of deep-merging, which would
+    # silently drop SECRETS_BOOTSTRAP_TOKEN, DATABASE_URL, etc. and crash
+    # the bootstrap. To set the AI model, use the Settings UI → AI providers
+    # tab (saves to secrets.AI_PRIMARY_MODEL; picked up at next service start).
 
   # One-shot knowledge-base seed. Fires full ingest on first boot, no-ops on subsequent boots
   # (checks BOOTSTRAP_SEED_COMPLETED marker in the secrets vault).
@@ -285,6 +331,35 @@ services:
       threat-intel:
         condition: service_started
     restart: "no"
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      # BFF service URLs — resolved at request time inside the container network
+      API_AUTH_URL: http://auth:8000
+      API_NEWS_URL: http://news-collector:8001
+      API_VULN_URL: http://vuln-intel:8002
+      API_THREAT_URL: http://threat-intel:8003
+      API_IOC_URL: http://ioc-collector:8004
+      API_ACTORS_URL: http://threat-actors:8005
+      API_INTEGRATIONS_URL: http://integrations:8006
+      API_CMDB_URL: http://cmdb:8007
+      API_FLOWVIZ_URL: http://flowviz:8008
+      API_ASM_URL: http://asm:8009
+      API_DOMAINWATCH_URL: http://domainwatch:8010
+      API_SCHEDULER_URL: http://scheduler:8011
+      API_SECRETS_URL: http://secrets:8012
+      API_INDICATOR_URL: http://indicator-intel:8013
+      API_ORCHESTRATOR_URL: http://orchestrator:8014
+    depends_on:
+      auth:
+        condition: service_healthy
+    restart: unless-stopped
 
 volumes:
   postgres-data:

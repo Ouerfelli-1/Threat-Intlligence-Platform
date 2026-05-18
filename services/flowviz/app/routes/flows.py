@@ -5,11 +5,12 @@ from datetime import datetime, timezone
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from tip_ai import LiteLLMError, LiteLLMRateLimitError, LiteLLMRequestTooLargeError
 from tip_auth import require_permission
 from tip_db import get_session
 
@@ -44,7 +45,27 @@ async def generate_flow(body: FlowRequest, request: Request, session: SessionDep
     if cached:
         return _to_out(cached)
 
-    output = await _call_ai(request, body.input, body.system)
+    # Wrap the LLM call so upstream rate limits / oversize payloads / generic
+    # failures surface to the client as proper HTTP statuses with actionable
+    # messages, instead of leaking a 500 traceback.
+    try:
+        output = await _call_ai(request, body.input, body.system)
+    except LiteLLMRateLimitError as exc:
+        retry = exc.retry_after_seconds
+        detail = "AI provider is rate-limited; please retry in a moment."
+        if retry:
+            detail = f"AI provider is rate-limited (retry in ~{retry}s)."
+        headers = {"Retry-After": str(retry)} if retry else None
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail, headers=headers) from exc
+    except LiteLLMRequestTooLargeError as exc:
+        # Flowviz prompts can hit this if the user pastes a huge description.
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                            "Threat description is too long for the configured AI model. "
+                            "Shorten the input or switch to a larger model.") from exc
+    except LiteLLMError as exc:
+        raise HTTPException(status.HTTP_502_BAD_GATEWAY,
+                            f"AI provider failed: {str(exc)[:200]}") from exc
+
     flow = Flow(
         id=uuid.uuid4(),
         input_hash=cache_key,
@@ -93,8 +114,13 @@ async def _call_ai(request: Request, input_text: str, system_override: str | Non
 
     client = request.app.state.ai_client
     system = system_override or DIRECT_FLOW_PROMPT
-    messages = [OpenRouterMessage(role="user", content=f"{system}{input_text}")]
-    raw = await client.chat(messages, response_format_json=True)
+    # System prompt goes as a proper system message; input as user message
+    messages = [
+        OpenRouterMessage(role="system", content=system),
+        OpenRouterMessage(role="user", content=input_text),
+    ]
+    # Attack flows are large JSON objects (15+ nodes, 15+ edges); need ample token budget
+    raw = await client.chat(messages, response_format_json=True, max_tokens=4000)
     return client.extract_json(raw)
 
 

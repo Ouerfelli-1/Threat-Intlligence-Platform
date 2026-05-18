@@ -2,11 +2,11 @@ from fastapi import FastAPI
 
 from tip_auth import JWTAuthMiddleware
 from tip_cache import Cache
-from tip_common import create_service_app, wire_auth
+from tip_common import build_notes_router, create_service_app, wire_auth
 from tip_source_health import SourceHealthRepository
 
-from app.db import close_engine, get_session_factory, init_engine
-from app.models import SourceHealth
+from app.db import close_engine, get_session, get_session_factory, init_engine
+from app.models import ArticleNote, SourceHealth
 from app.routes import articles, feeds, health, ingest
 from app.seed import seed_feeds_if_empty
 from app.settings import get_settings
@@ -50,7 +50,19 @@ app.add_middleware(
     tip_env=settings.tip_env,
 )
 
+article_notes_router = build_notes_router(
+    prefix="/articles",
+    resource_id_param="article_id",
+    note_model=ArticleNote,
+    resource_id_column="article_id",
+    perm_read="intelligence:read",
+    perm_write="intelligence:write",
+    get_session=get_session,
+    tags=["articles"],
+)
+
 app.include_router(articles.router)
+app.include_router(article_notes_router)
 app.include_router(feeds.router)
 app.include_router(ingest.router)
 app.include_router(health.router)

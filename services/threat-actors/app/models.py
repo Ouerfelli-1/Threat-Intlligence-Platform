@@ -17,7 +17,7 @@ class Base(DeclarativeBase):
 class Actor(Base):
     __tablename__ = "actors"
     __table_args__ = (
-        sa.UniqueConstraint("mitre_id", name="uq_actors_mitre_id"),
+        sa.Index("ix_actors_mitre_id_unique", "mitre_id", unique=True, postgresql_where=sa.text("mitre_id IS NOT NULL")),
         {"schema": SCHEMA},
     )
 
@@ -26,6 +26,7 @@ class Actor(Base):
     name: Mapped[str] = mapped_column(sa.String(256), nullable=False)
     aliases: Mapped[list] = mapped_column(ARRAY(sa.String), nullable=False, server_default="{}")
     origin_country: Mapped[str | None] = mapped_column(sa.String(128), nullable=True)
+    description: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
     motivation: Mapped[list] = mapped_column(ARRAY(sa.String), nullable=False, server_default="{}")
     active_since: Mapped[sa.Date | None] = mapped_column(sa.Date, nullable=True)
     last_seen: Mapped[sa.Date | None] = mapped_column(sa.Date, nullable=True)
@@ -33,6 +34,7 @@ class Actor(Base):
     target_countries: Mapped[list] = mapped_column(ARRAY(sa.String), nullable=False, server_default="{}")
     status: Mapped[str] = mapped_column(sa.String(32), nullable=False, server_default="active")
     raw: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    analyst_status: Mapped[str] = mapped_column(sa.String(32), nullable=False, server_default="unreviewed")
 
 
 class ActorTTP(Base):
@@ -64,6 +66,7 @@ class Tool(Base):
     type: Mapped[str] = mapped_column(sa.String(64), nullable=False)  # malware | tool
     mitre_id: Mapped[str | None] = mapped_column(sa.String(32), nullable=True)
     description: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    malpedia_url: Mapped[str | None] = mapped_column(sa.String(512), nullable=True)
     raw: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
 
 
@@ -103,6 +106,17 @@ class RansomwareGroup(Base):
     leak_site_url: Mapped[str | None] = mapped_column(sa.String(512), nullable=True)
     ransom_range: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
     raw: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    # Phase 4 enrichments
+    description: Mapped[str | None] = mapped_column(sa.Text, nullable=True)
+    profile_url: Mapped[str | None] = mapped_column(sa.String(512), nullable=True)
+    tor_urls: Mapped[list] = mapped_column(ARRAY(sa.String), nullable=False, server_default="{}")
+    domains: Mapped[list] = mapped_column(ARRAY(sa.String), nullable=False, server_default="{}")
+    locations: Mapped[list] = mapped_column(ARRAY(sa.String), nullable=False, server_default="{}")
+    iocs: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    victim_count: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0")
+    target_countries: Mapped[list] = mapped_column(ARRAY(sa.String), nullable=False, server_default="{}")
+    target_sectors: Mapped[list] = mapped_column(ARRAY(sa.String), nullable=False, server_default="{}")
+    actor_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
 
 
 class RansomwareVictim(Base):
@@ -142,6 +156,20 @@ class ActorInsight(Base):
     model_name: Mapped[str] = mapped_column(sa.String(128), nullable=False)
     prompt_version: Mapped[str] = mapped_column(sa.String(32), nullable=False)
     generated_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    analyst_override: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
+
+class ActorNote(Base):
+    __tablename__ = "actor_notes"
+    __table_args__ = {"schema": SCHEMA}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    actor_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    pinned: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, default=False)
+    author: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    created_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False)
 
 
 class SourceHealth(Base):

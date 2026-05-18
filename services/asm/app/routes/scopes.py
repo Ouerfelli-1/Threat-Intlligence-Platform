@@ -10,7 +10,7 @@ from tip_db import get_session
 
 from app.db import get_session_factory
 from app.models import Scope
-from app.schemas import ScopeCreate, ScopeOut
+from app.schemas import ScopeCreate, ScopeOut, ScopeUpdate
 
 router = APIRouter(prefix="/scopes", tags=["scopes"])
 
@@ -52,7 +52,11 @@ async def get_scope(scope_id: UUID, session: SessionDep):
 
 
 @router.patch("/{scope_id}", response_model=ScopeOut, dependencies=[Depends(require_permission("asm:write"))])
-async def update_scope(scope_id: UUID, body: ScopeCreate, session: SessionDep):
+async def update_scope(scope_id: UUID, body: ScopeUpdate, session: SessionDep):
+    """Partial update. Most common use-case is the pause/resume toggle
+    (`active=false` halts scanning for this scope until re-enabled).
+    Targets + findings are preserved across a pause cycle.
+    """
     from tip_common import NotFoundError
 
     result = await session.execute(select(Scope).where(Scope.id == scope_id))
@@ -67,6 +71,17 @@ async def update_scope(scope_id: UUID, body: ScopeCreate, session: SessionDep):
 
 @router.delete("/{scope_id}", status_code=204, dependencies=[Depends(require_permission("asm:write"))])
 async def delete_scope(scope_id: UUID, session: SessionDep):
+    """Delete a scope and all of its derivative data.
+
+    Cascade chain (enforced at the DB level by FKs):
+      Scope -> Target  (ondelete=CASCADE)
+      Scope -> Job     (ondelete=CASCADE, set up in migration 0002)
+      Job   -> Finding (ondelete=CASCADE)
+
+    Before migration 0002 the Scope -> Job FK was SET NULL, which orphaned
+    findings forever. With CASCADE in place, a single delete here clears
+    every row tied to the scope in one transaction.
+    """
     from tip_common import NotFoundError
 
     result = await session.execute(select(Scope).where(Scope.id == scope_id))

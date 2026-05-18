@@ -65,6 +65,43 @@ class Correlation(Base):
     detected_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
 
 
+class AIPolicy(Base):
+    __tablename__ = "ai_policies"
+    __table_args__ = (
+        sa.Index("ix_ai_policies_scope_priority", "scope", sa.text("priority DESC")),
+        sa.Index("ix_ai_policies_resource", "resource_type", "resource_id"),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    scope: Mapped[str] = mapped_column(sa.String(32), nullable=False)  # global | category | resource
+    category: Mapped[Optional[str]] = mapped_column(sa.String(64), nullable=True)
+    resource_type: Mapped[Optional[str]] = mapped_column(sa.String(64), nullable=True)
+    resource_id: Mapped[Optional[str]] = mapped_column(sa.String(128), nullable=True)
+    mode: Mapped[str] = mapped_column(sa.String(32), nullable=False)  # full_auto | category_auto | on_demand
+    actions: Mapped[list] = mapped_column(ARRAY(sa.Text), nullable=False, server_default="{}")
+    cmdb_filter: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default="false")
+    priority: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0")
+    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default="true")
+    created_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
+    updated_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
+
+
+class ActionRun(Base):
+    __tablename__ = "action_runs"
+    __table_args__ = {"schema": SCHEMA}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    resource_type: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    resource_id: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    action: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    status: Mapped[str] = mapped_column(sa.String(32), nullable=False, server_default="pending")
+    started_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
+    completed_at: Mapped[Optional[sa.DateTime]] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+    error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    output: Mapped[Optional[dict]] = mapped_column(JSONB, nullable=True)
+
+
 class SourceHealth(Base):
     __tablename__ = "source_health"
     __table_args__ = {"schema": SCHEMA}

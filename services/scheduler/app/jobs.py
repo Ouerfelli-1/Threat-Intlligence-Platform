@@ -26,7 +26,9 @@ JOB_CONFIGS = [
     {"id": "threat_intel_pull",  "url_attr": "threat_intel_url",    "path": "/ingest/run",    "method": "POST", "schedule": IntervalTrigger(minutes=15),   "max_runtime": 600},
     {"id": "vuln_cve_refresh",   "url_attr": "vuln_intel_url",      "path": "/refresh/nvd",   "method": "POST", "schedule": IntervalTrigger(minutes=20),   "max_runtime": 1800},
     {"id": "vuln_kev_refresh",   "url_attr": "vuln_intel_url",      "path": "/refresh/kev",   "method": "POST", "schedule": IntervalTrigger(minutes=12),   "max_runtime": 300},
-    {"id": "vuln_epss_refresh",  "url_attr": "vuln_intel_url",      "path": "/refresh/epss",  "method": "POST", "schedule": IntervalTrigger(minutes=18),   "max_runtime": 300},
+    # EPSS daily snapshot is ~333K rows — well under 30 min on FIRST.org's
+    # CSV but the old 300s cap was too tight. Bumped to 1800.
+    {"id": "vuln_epss_refresh",  "url_attr": "vuln_intel_url",      "path": "/refresh/epss",  "method": "POST", "schedule": IntervalTrigger(minutes=18),   "max_runtime": 1800},
     {"id": "ioc_pull",           "url_attr": "ioc_collector_url",   "path": "/ingest/run",    "method": "POST", "schedule": IntervalTrigger(minutes=8),    "max_runtime": 600},
     {"id": "actors_refresh",     "url_attr": "threat_actors_url",   "path": "/refresh",       "method": "POST", "schedule": IntervalTrigger(minutes=30),   "max_runtime": 1800},
     {"id": "asm_discovery",      "url_attr": "asm_url",             "path": "/scan/run",      "method": "POST", "schedule": IntervalTrigger(minutes=25),   "max_runtime": 3600},
@@ -58,7 +60,7 @@ def build_scheduler(settings, session_factory) -> AsyncIOScheduler:
             _fire_job,
             cfg["schedule"],
             id=cfg["id"],
-            args=[cfg["id"], cfg["url_attr"], cfg["path"], cfg.get("method", "POST")],
+            args=[cfg["id"], cfg["url_attr"], cfg["path"], cfg.get("method", "POST"), cfg.get("max_runtime", 600)],
             replace_existing=True,
         )
 
@@ -74,7 +76,7 @@ def build_scheduler(settings, session_factory) -> AsyncIOScheduler:
     return scheduler
 
 
-async def _fire_job(job_id: str, url_attr: str, path: str, method: str = "POST") -> None:
+async def _fire_job(job_id: str, url_attr: str, path: str, method: str = "POST", max_runtime: int = 600) -> None:
     run_id = uuid.uuid4()
     base_url = getattr(_settings, url_attr, "")
     if not base_url:
@@ -92,27 +94,48 @@ async def _fire_job(job_id: str, url_attr: str, path: str, method: str = "POST")
         session.add(run)
         await session.commit()
 
+    # Use max_runtime as the HTTP timeout so slow jobs (NVD, IOC bulk, EPSS
+    # download of 333K rows) aren't cut short. Cap at 30 min — long enough for
+    # the EPSS snapshot, short enough that a genuinely-hung target gets noticed.
+    # connect timeout stays at 10 s.
+    http_timeout = httpx.Timeout(connect=10.0, read=min(max_runtime, 1800), write=60.0, pool=10.0)
+
     start = asyncio.get_event_loop().time()
     try:
-        async with httpx.AsyncClient(timeout=35) as client:
+        async with httpx.AsyncClient(timeout=http_timeout) as client:
             fn = getattr(client, method.lower())
             resp = await fn(f"{base_url}{path}", json={"run_id": str(run_id)})
         http_status = resp.status_code
-        status = "success" if resp.status_code < 400 else "failed"
-        error_detail = None if status == "success" else resp.text[:500]
+        # 202 means the service accepted the work and will run it asynchronously.
+        # The actual outcome will arrive via POST /internal/runs/{run_id}/complete.
+        # Until then the row stays as "running" so the UI doesn't claim success
+        # before the background task actually finishes.
+        if 200 <= resp.status_code < 300 and resp.status_code != 202:
+            status = "success"
+            error_detail = None
+        elif resp.status_code == 202:
+            status = "running"
+            error_detail = None
+        else:
+            status = "failed"
+            error_detail = resp.text[:500]
         log.info("scheduler job=%s run_id=%s status=%s http=%d", job_id, run_id, status, http_status)
     except Exception as exc:
         http_status = None
         status = "failed"
-        error_detail = str(exc)[:500]
-        log.error("scheduler job=%s run_id=%s error=%s", job_id, run_id, exc)
+        # Use repr() so exceptions with no message (e.g. ReadTimeout) still show their type
+        error_detail = repr(exc)[:500]
+        log.error("scheduler job=%s run_id=%s error=%r", job_id, run_id, exc)
 
     elapsed_ms = int((asyncio.get_event_loop().time() - start) * 1000)
     async with _session_factory() as session:
         run = await session.get(JobRunHistory, run_id)
         if run:
-            run.completed_at = datetime.now(timezone.utc)
-            run.duration_ms = elapsed_ms
+            # Only stamp completed_at for terminal states; "running" jobs will be
+            # closed by the callback or the watchdog.
+            if status != "running":
+                run.completed_at = datetime.now(timezone.utc)
+                run.duration_ms = elapsed_ms
             run.status = status
             run.http_status = http_status
             run.error_detail = error_detail

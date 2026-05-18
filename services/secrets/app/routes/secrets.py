@@ -12,7 +12,7 @@ from tip_db import get_session
 from app.crypto import decrypt, encrypt
 from app.db import get_session_factory
 from app.models import AccessLog, Secret
-from app.schemas import SecretCreate, SecretMeta, SecretRotate, SecretValue
+from app.schemas import SecretCreate, SecretMeta, SecretPreview, SecretRotate, SecretValue
 
 router = APIRouter(prefix="/secrets", tags=["secrets"])
 
@@ -54,6 +54,41 @@ async def list_secrets(session: SessionDep):
         SecretMeta(name=s.name, version=s.version, metadata=s.metadata_, created_at=s.created_at, updated_at=s.updated_at)
         for s in result.scalars().all()
     ]
+
+
+@router.get(
+    "/{name}/preview",
+    response_model=SecretPreview,
+    dependencies=[Depends(require_permission("secrets:read"))],
+)
+async def preview_secret(name: str, request: Request, session: SessionDep):
+    """Admin-safe preview of a secret. Returns first 8 chars + bullets, never
+    the full value. Lets admins confirm which key is currently configured
+    without exposing the material itself to the browser or its caches."""
+    from tip_common import NotFoundError
+
+    result = await session.execute(select(Secret).where(Secret.name == name))
+    secret = result.scalar_one_or_none()
+    if not secret:
+        raise NotFoundError(f"Secret '{name}' not found")
+
+    fernet = request.app.state.fernet
+    raw = decrypt(fernet, secret.value_encrypted) or ""
+    visible = raw[:8] if len(raw) >= 8 else raw
+    masked = f"{visible}{'•' * 12}" if visible else "(empty)"
+
+    await _log(session, name, _actor(request), "preview", request.client.host if request.client else None)
+    await session.commit()
+
+    return SecretPreview(
+        name=secret.name,
+        version=secret.version,
+        metadata=secret.metadata_,
+        created_at=secret.created_at,
+        updated_at=secret.updated_at,
+        preview=masked,
+        length=len(raw),
+    )
 
 
 @router.get("/{name}", response_model=SecretValue, dependencies=[Depends(require_permission("secrets:read"))])

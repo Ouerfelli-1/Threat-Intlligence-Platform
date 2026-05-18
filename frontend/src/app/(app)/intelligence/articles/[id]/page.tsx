@@ -1,0 +1,396 @@
+'use client';
+
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import useSWR from 'swr';
+import Bar from '@/components/shared/Bar';
+import {
+  Link as LinkIcon, Pin, More, Sparkles, Refresh,
+  ChevronLeft, Check, X, AlertTriangle, Eye,
+} from '@/components/icons';
+import { useArticle } from '@/lib/hooks';
+import { api, fetcher } from '@/lib/api';
+
+/* ── helpers ─────────────────────────────────────────────────────────────── */
+
+interface Insight {
+  payload: Record<string, unknown>;
+  analyst_override: Record<string, unknown> | null;
+  model_name: string;
+  prompt_version: string;
+  generated_at: string;
+}
+
+interface Note {
+  id: string;
+  body: string;
+  pinned: boolean;
+  author: string;
+  created_at: string;
+  updated_at: string;
+}
+
+function fmtDate(iso: string | null): string {
+  if (!iso) return '—';
+  return new Date(iso).toLocaleString('en-GB', {
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit',
+  });
+}
+
+function timeAgo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+const STATUS_OPTS = [
+  { value: 'unreviewed', label: 'Unreviewed', cls: 'mute' },
+  { value: 'relevant',   label: 'Relevant',   cls: 'low' },
+  { value: 'not_relevant', label: 'Not relevant', cls: 'high' },
+  { value: 'escalated',  label: 'Escalated',  cls: 'high' },
+  { value: 'reviewed',   label: 'Reviewed',   cls: 'med' },
+] as const;
+
+function statusBadgeClass(s: string): string {
+  return STATUS_OPTS.find(o => o.value === s)?.cls ?? 'mute';
+}
+
+/* ── page component ──────────────────────────────────────────────────────── */
+
+export default function ArticleDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params?.id as string;
+  const [tab, setTab] = useState<'insight' | 'notes' | 'raw'>('insight');
+
+  // Article data
+  const { data: article, isLoading, mutate: mutateArticle } = useArticle(id);
+
+  // Insight
+  const { data: insight, isLoading: insightLoading, mutate: mutateInsight } = useSWR<Insight>(
+    id ? `/articles/${id}/insight` : null,
+    fetcher,
+    { revalidateOnFocus: false, errorRetryCount: 0 },
+  );
+  const [analyzing, setAnalyzing] = useState(false);
+
+  // Notes
+  const { data: notesData, mutate: mutateNotes } = useSWR<{ items: Note[]; total: number }>(
+    id ? `/articles/${id}/notes` : null,
+    fetcher,
+    { revalidateOnFocus: false },
+  );
+  const notes = notesData?.items ?? [];
+  const [noteBody, setNoteBody] = useState('');
+  const [notePinned, setNotePinned] = useState(false);
+  const [postingNote, setPostingNote] = useState(false);
+
+  // Status menu
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
+
+  /* ── actions ─────────────────────────────────────────────────────────── */
+
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+
+  const handleAnalyze = useCallback(async () => {
+    setAnalyzing(true);
+    setAnalyzeError(null);
+    try {
+      // Article analyze still goes through the orchestrator action pipeline
+      // (async). Kick off then poll once after 4s — long enough for most
+      // single-action runs to complete.
+      await api.post(`/articles/${id}/analyze`);
+      setTimeout(() => { mutateInsight(); setAnalyzing(false); }, 4000);
+    } catch (e: unknown) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const err = e as { status?: number; body?: { detail?: string; message?: string } };
+      const detail =
+        err?.body?.detail ?? err?.body?.message ??
+        (e instanceof Error ? e.message : 'Request failed');
+      let friendly = detail;
+      if (err?.status === 429)      friendly = `AI provider is rate-limited. ${detail}`;
+      else if (err?.status === 413) friendly = `Article too large for the AI model. ${detail}`;
+      else if (err?.status === 502) friendly = `AI provider failed upstream. ${detail}`;
+      setAnalyzeError(friendly);
+      setAnalyzing(false);
+    }
+  }, [id, mutateInsight]);
+
+  const handlePostNote = useCallback(async () => {
+    if (!noteBody.trim()) return;
+    setPostingNote(true);
+    try {
+      await api.post(`/articles/${id}/notes`, { body: noteBody, pinned: notePinned });
+      setNoteBody('');
+      setNotePinned(false);
+      mutateNotes();
+    } finally { setPostingNote(false); }
+  }, [id, noteBody, notePinned, mutateNotes]);
+
+  const handleDeleteNote = useCallback(async (noteId: string) => {
+    await api.delete(`/articles/${id}/notes/${noteId}`);
+    mutateNotes();
+  }, [id, mutateNotes]);
+
+  const handleTogglePin = useCallback(async (note: Note) => {
+    await api.patch(`/articles/${id}/notes/${note.id}`, { pinned: !note.pinned });
+    mutateNotes();
+  }, [id, mutateNotes]);
+
+  const handleStatus = useCallback(async (status: string) => {
+    await api.patch(`/articles/${id}/status`, { analyst_status: status });
+    mutateArticle();
+    setMenuOpen(false);
+  }, [id, mutateArticle]);
+
+  /* ── render ──────────────────────────────────────────────────────────── */
+
+  if (isLoading) {
+    return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-4)' }}>Loading article...</div>;
+  }
+  if (!article) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-4)', gap: 12 }}>
+        <div>Article not found</div>
+        <button className="btn" onClick={() => router.back()}><ChevronLeft s={12} />Go back</button>
+      </div>
+    );
+  }
+
+  const conf = article.confidence_score ?? 0;
+
+  return (
+    <div style={{ height: '100%', display: 'grid', gridTemplateColumns: '60% 40%', overflow: 'hidden' }}>
+      {/* LEFT */}
+      <div style={{ overflow: 'auto', padding: 22, borderRight: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <button className="btn sm" onClick={() => router.back()}><ChevronLeft s={11} />Articles</button>
+          {article.tags.slice(0, 3).map(t => <span key={t} className="badge med">{t}</span>)}
+          {article.tags.length > 3 && <span className="badge mute">+{article.tags.length - 3}</span>}
+          <span style={{ marginLeft: 'auto', display: 'flex', gap: 6, position: 'relative' }}>
+            <a href={article.url} target="_blank" rel="noreferrer" className="btn sm"><LinkIcon s={11} />Open source</a>
+            <button className="btn sm" onClick={() => handleStatus('escalated')}><AlertTriangle s={11} />Escalate</button>
+            <div ref={menuRef} style={{ position: 'relative' }}>
+              <button className="btn sm" onClick={() => setMenuOpen(o => !o)}><More s={11} /></button>
+              {menuOpen && (
+                <div style={{ position: 'absolute', right: 0, top: '100%', marginTop: 4, background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6, padding: 4, zIndex: 100, minWidth: 160, boxShadow: '0 4px 12px rgba(0,0,0,.4)' }}>
+                  {STATUS_OPTS.map(o => (
+                    <div key={o.value}
+                         onClick={() => handleStatus(o.value)}
+                         style={{ padding: '6px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 4, display: 'flex', alignItems: 'center', gap: 6, color: article.analyst_status === o.value ? 'var(--accent)' : 'var(--text-2)' }}
+                         onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                         onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                      {article.analyst_status === o.value && <Check s={10} />}
+                      <span className={`badge ${o.cls}`} style={{ fontSize: 10 }}>{o.label}</span>
+                    </div>
+                  ))}
+                  <div style={{ borderTop: '1px solid var(--border)', margin: '4px 0' }} />
+                  <div onClick={() => { navigator.clipboard.writeText(id); setMenuOpen(false); }}
+                       style={{ padding: '6px 10px', fontSize: 12, cursor: 'pointer', borderRadius: 4, color: 'var(--text-3)' }}
+                       onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-hover)')}
+                       onMouseLeave={e => (e.currentTarget.style.background = 'none')}>
+                    Copy ID
+                  </div>
+                </div>
+              )}
+            </div>
+          </span>
+        </div>
+
+        <h1 style={{ fontSize: 20, fontWeight: 600, color: 'var(--text)', lineHeight: 1.3, letterSpacing: '-0.015em', margin: '4px 0 8px' }}>
+          {article.title}
+        </h1>
+
+        <div style={{ color: 'var(--text-3)', fontSize: 12.5, display: 'flex', gap: 14, flexWrap: 'wrap', marginBottom: 14 }}>
+          <strong style={{ color: 'var(--text-2)', fontWeight: 500 }}>{article.source_name}</strong>
+          {article.author && <span>by {article.author}</span>}
+          <span>{fmtDate(article.published_at ?? article.fetched_at)}</span>
+        </div>
+
+        {/* Mini metrics row */}
+        <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
+          <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6 }}>
+            <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Confidence</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ fontSize: 18, fontWeight: 600, color: conf > 0.85 ? 'var(--low)' : conf > 0.6 ? 'var(--med)' : 'var(--high)', fontFamily: 'var(--mono)' }}>{conf.toFixed(2)}</div>
+              <Bar value={conf} variant={conf > 0.85 ? 'low' : conf > 0.6 ? '' : 'high'} />
+            </div>
+          </div>
+          <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6 }}>
+            <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Status</div>
+            <span className={`badge ${statusBadgeClass(article.analyst_status)}`}>{article.analyst_status || 'unreviewed'}</span>
+          </div>
+        </div>
+
+        {article.summary && (
+          <>
+            <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Summary</div>
+            <p style={{ fontSize: 13.5, lineHeight: 1.65, color: 'var(--text-2)', margin: '0 0 18px' }}>{article.summary}</p>
+          </>
+        )}
+
+        {article.tags.length > 0 && (
+          <>
+            <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Tags</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              {article.tags.map(t => <span key={t} className="tag">{t}</span>)}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* RIGHT */}
+      <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-page)' }}>
+        <div style={{ padding: '0 14px', borderBottom: '1px solid var(--border)' }}>
+          <div className="tabs" style={{ border: 'none' }}>
+            {(['insight', 'notes', 'raw'] as const).map(t => (
+              <div key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)} style={{ textTransform: 'capitalize' }}>
+                {t}{t === 'notes' && notes.length > 0 ? ` (${notes.length})` : ''}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ flex: 1, overflow: 'auto', padding: 14 }}>
+          {/* ── Insight tab ───────────────────────────────────────────── */}
+          {tab === 'insight' && (
+            <>
+              {insightLoading && <div style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>Loading insight...</div>}
+
+              {!insightLoading && !insight && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 220, color: 'var(--text-4)', gap: 10, padding: 14, textAlign: 'center' }}>
+                  <Sparkles s={24} />
+                  <div style={{ fontSize: 13 }}>
+                    {analyzing ? 'Calling the AI provider…' : 'No AI insight yet'}
+                  </div>
+                  <button className="btn sm" onClick={handleAnalyze} disabled={analyzing}>
+                    <Refresh s={11} />{analyzing ? 'Analyzing...' : 'Generate insight'}
+                  </button>
+                  {analyzing && (
+                    <div style={{ fontSize: 10.5, color: 'var(--text-mute)' }}>
+                      This usually completes in 5-15s. Reload tab if it takes longer than 30s.
+                    </div>
+                  )}
+                  {analyzeError && (
+                    <div style={{ marginTop: 6, padding: '8px 10px', maxWidth: 320, background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.25)', borderRadius: 6, fontSize: 11.5, color: '#f85149', textAlign: 'left' }}>
+                      <strong>Last attempt failed:</strong> {analyzeError}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {!insightLoading && insight && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  {/* Override banner */}
+                  {insight.analyst_override && (
+                    <div style={{ padding: '8px 10px', background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.25)', borderRadius: 6, fontSize: 12 }}>
+                      <div style={{ fontWeight: 600, color: '#d29922', marginBottom: 4 }}>Analyst Override</div>
+                      <pre style={{ fontSize: 11, color: 'var(--text-2)', margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'var(--mono)' }}>
+                        {JSON.stringify(insight.analyst_override, null, 2)}
+                      </pre>
+                    </div>
+                  )}
+
+                  {/* Structured payload rendering */}
+                  {Object.entries(insight.payload).map(([key, val]) => (
+                    <div key={key} style={{ padding: '8px 10px', background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>
+                        {key.replace(/_/g, ' ')}
+                      </div>
+                      {typeof val === 'string' ? (
+                        <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.5 }}>{val}</div>
+                      ) : Array.isArray(val) ? (
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                          {val.map((v, i) => <span key={i} className="tag">{typeof v === 'string' ? v : JSON.stringify(v)}</span>)}
+                        </div>
+                      ) : (
+                        <pre style={{ fontSize: 11, color: 'var(--text-3)', margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'var(--mono)' }}>
+                          {JSON.stringify(val, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  ))}
+
+                  <div style={{ fontSize: 10, color: 'var(--text-4)', display: 'flex', gap: 10, marginTop: 4 }}>
+                    <span>Model: {insight.model_name}</span>
+                    <span>v{insight.prompt_version}</span>
+                    <span>{fmtDate(insight.generated_at)}</span>
+                  </div>
+
+                  <button className="btn sm" onClick={handleAnalyze} disabled={analyzing} style={{ alignSelf: 'flex-start' }}>
+                    <Refresh s={11} />{analyzing ? 'Re-analyzing...' : 'Re-analyze'}
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* ── Notes tab ─────────────────────────────────────────────── */}
+          {tab === 'notes' && (
+            <div>
+              {/* Compose */}
+              <div style={{ padding: 10, background: 'var(--bg-elev)', borderRadius: 6, border: '1px solid var(--border)', marginBottom: 12 }}>
+                <textarea className="input" rows={3} placeholder="Add a note..."
+                          value={noteBody} onChange={e => setNoteBody(e.target.value)}
+                          style={{ height: 'auto', padding: 10, fontFamily: 'var(--sans)', width: '100%' }} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 8 }}>
+                  <label style={{ fontSize: 11.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+                    <input type="checkbox" checked={notePinned} onChange={e => setNotePinned(e.target.checked)} style={{ accentColor: '#d29922' }} />Pin
+                  </label>
+                  <button className="btn primary sm" style={{ marginLeft: 'auto' }} onClick={handlePostNote}
+                          disabled={postingNote || !noteBody.trim()}>
+                    {postingNote ? 'Posting...' : 'Post note'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Notes list */}
+              {notes.length === 0 && (
+                <div style={{ textAlign: 'center', fontSize: 12, color: 'var(--text-4)', padding: 20 }}>No notes yet. Be the first to add one.</div>
+              )}
+              {notes.map(n => (
+                <div key={n.id} style={{ padding: '8px 10px', borderRadius: 6, border: '1px solid var(--border)', marginBottom: 6, borderLeft: n.pinned ? '3px solid #d29922' : '1px solid var(--border)', background: n.pinned ? 'rgba(210,153,34,0.04)' : 'transparent' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-2)' }}>{n.author}</span>
+                    <span style={{ fontSize: 10, color: 'var(--text-4)' }}>{timeAgo(n.created_at)}</span>
+                    {n.pinned && <Pin s={9} />}
+                    <span style={{ marginLeft: 'auto', display: 'flex', gap: 4 }}>
+                      <button className="btn sm" style={{ padding: '2px 4px' }} onClick={() => handleTogglePin(n)} title={n.pinned ? 'Unpin' : 'Pin'}>
+                        <Pin s={9} />
+                      </button>
+                      <button className="btn sm" style={{ padding: '2px 4px' }} onClick={() => handleDeleteNote(n.id)} title="Delete">
+                        <X s={9} />
+                      </button>
+                    </span>
+                  </div>
+                  <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>{n.body}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Raw tab ───────────────────────────────────────────────── */}
+          {tab === 'raw' && (
+            <pre style={{ fontSize: 10.5, color: 'var(--text-3)', fontFamily: 'var(--mono)', whiteSpace: 'pre-wrap', margin: 0 }}>
+              {JSON.stringify(article, null, 2)}
+            </pre>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

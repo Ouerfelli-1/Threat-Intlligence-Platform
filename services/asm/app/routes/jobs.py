@@ -1,11 +1,12 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, Query, Request
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from tip_auth import require_permission
+from tip_common import extract_run_id, run_with_callback
 from tip_db import get_session
 
 from app.db import get_session_factory
@@ -68,9 +69,25 @@ async def list_findings(
 
 
 @router.post("/scan/run", status_code=202, dependencies=[Depends(require_permission("asm:write"))])
-async def trigger_scan(request: Request, background_tasks: BackgroundTasks):
+async def trigger_scan(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    body: dict | None = Body(None),
+):
+    from app.settings import get_settings
+
     session_factory = request.app.state.session_factory
     health = request.app.state.source_health
     shodan_key = getattr(request.app.state, "shodan_api_key", "")
-    background_tasks.add_task(run_scan, session_factory, health, shodan_key)
-    return {"status": "running"}
+    run_id = extract_run_id(body)
+    settings = get_settings()
+    jwt = getattr(request.app.state, "service_jwt", "")
+
+    background_tasks.add_task(
+        run_with_callback,
+        lambda: run_scan(session_factory, health, shodan_key),
+        scheduler_url=settings.scheduler_url,
+        run_id=run_id,
+        service_jwt=jwt,
+    )
+    return {"status": "running", "run_id": run_id}

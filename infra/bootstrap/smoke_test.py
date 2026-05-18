@@ -29,6 +29,11 @@ SERVICES = {
     "orchestrator": 8014,
 }
 
+# LiteLLM proxy uses a non-standard health path (/health/liveliness). Probed
+# separately so a "[BAD] litellm" row makes operators check the proxy first
+# before chasing AI failures in downstream services.
+LITELLM_HEALTH_URL = "http://localhost:4000/health/liveliness"
+
 
 async def _probe(client: httpx.AsyncClient, name: str, port: int) -> tuple[str, bool, str]:
     try:
@@ -40,9 +45,21 @@ async def _probe(client: httpx.AsyncClient, name: str, port: int) -> tuple[str, 
         return name, False, f"{type(e).__name__}: {e}"
 
 
+async def _probe_litellm(client: httpx.AsyncClient) -> tuple[str, bool, str]:
+    try:
+        resp = await client.get(LITELLM_HEALTH_URL, timeout=5.0)
+        if resp.status_code == 200:
+            return "litellm", True, "ok"
+        return "litellm", False, f"http {resp.status_code}"
+    except Exception as e:
+        return "litellm", False, f"{type(e).__name__}: {e}"
+
+
 async def _main() -> int:
     async with httpx.AsyncClient() as client:
-        results = await asyncio.gather(*(_probe(client, n, p) for n, p in SERVICES.items()))
+        tasks = [_probe(client, n, p) for n, p in SERVICES.items()]
+        tasks.append(_probe_litellm(client))
+        results = await asyncio.gather(*tasks)
     rc = 0
     for name, ok, detail in results:
         marker = "OK " if ok else "BAD"

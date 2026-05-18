@@ -10,7 +10,7 @@ from tip_db import get_session
 
 from app.db import get_session_factory
 from app.models import Target
-from app.schemas import TargetCreate, TargetOut
+from app.schemas import TargetCreate, TargetOut, TargetUpdate
 
 router = APIRouter(prefix="/targets", tags=["targets"])
 
@@ -45,6 +45,26 @@ async def create_target(body: TargetCreate, session: SessionDep):
     import uuid
     target = Target(id=uuid.uuid4(), **body.model_dump())
     session.add(target)
+    await session.commit()
+    return target
+
+
+@router.patch("/{target_id}", response_model=TargetOut, dependencies=[Depends(require_permission("asm:write"))])
+async def update_target(target_id: UUID, body: TargetUpdate, session: SessionDep):
+    """Partial update — most-used path is the pause/resume toggle (active).
+
+    Inactive targets stay in the DB; the scanner just skips them. This way an
+    analyst can pause noisy targets without losing their history or having to
+    re-add them to resume scanning.
+    """
+    from tip_common import NotFoundError
+
+    result = await session.execute(select(Target).where(Target.id == target_id))
+    target = result.scalar_one_or_none()
+    if not target:
+        raise NotFoundError(f"Target {target_id} not found")
+    for field, value in body.model_dump(exclude_none=True).items():
+        setattr(target, field, value)
     await session.commit()
     return target
 

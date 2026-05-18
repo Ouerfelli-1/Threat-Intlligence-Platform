@@ -127,7 +127,11 @@ def _build_article(
     score = compute_confidence(DataType.ARTICLE, confidence_inputs)
 
     text_for_tags = f"{title} {_strip_html(summary_html)}"
-    tags = _detect_tags(text_for_tags)
+    auto_tags = _detect_tags(text_for_tags)
+    # Merge feed-level curated tags (analyst-configured) with auto-detected
+    # keyword tags. Feed tags always apply; auto tags add depth per article.
+    feed_tags = list(getattr(feed, "tags", None) or [])
+    tags = sorted(set(feed_tags) | set(auto_tags))
     truncated_content = (main_text[:50000] or None)
     content_hash = hashlib.sha256((truncated_content or "").encode("utf-8")).hexdigest()
 
@@ -225,7 +229,12 @@ async def ingest_feed(
             "article_enriched", article_id=str(existing.id), url=values["url"]
         )
 
-    feed.last_pulled_at = now
+    # The `feed` object was loaded by the outer session in run_ingestion_cycle()
+    # and is detached from this inner session — assigning to .last_pulled_at would
+    # be tracked by no transaction. Use an explicit UPDATE so it actually persists.
+    await session.execute(
+        Feed.__table__.update().where(Feed.id == feed.id).values(last_pulled_at=now)
+    )
     await session.flush()
     logger.info("feed_ingest_done", feed=feed.name, added=added, enriched=enriched, seen=seen)
     return added, seen

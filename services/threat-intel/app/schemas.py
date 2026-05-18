@@ -1,7 +1,7 @@
 import uuid
 from datetime import date, datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class ThreatOut(BaseModel):
@@ -14,8 +14,14 @@ class ThreatOut(BaseModel):
     summary: str | None
     severity: str
     confidence_score: float
+    analyst_status: str = "unreviewed"
 
     model_config = {"from_attributes": True}
+
+
+class ThreatList(BaseModel):
+    items: list[ThreatOut]
+    total: int
 
 
 class HIBPBreachOut(BaseModel):
@@ -37,6 +43,7 @@ class ThreatInsightOut(BaseModel):
     model_name: str
     prompt_version: str
     generated_at: datetime
+    analyst_override: dict | None = None
 
     model_config = {"from_attributes": True}
 
@@ -52,3 +59,25 @@ class SourceHealthOut(BaseModel):
     updated_at: datetime | None
 
     model_config = {"from_attributes": True}
+
+
+class AnalystStatusUpdate(BaseModel):
+    analyst_status: str = Field(..., pattern=r"^(unreviewed|relevant|not_relevant|escalated|reviewed)$")
+
+
+class InsightOverrideIn(BaseModel):
+    analyst_override: dict
+
+
+class AnalyzeRequest(BaseModel):
+    actions: list[str] | None = None
+    flowviz: bool = True
+    model: str | None = None
+
+
+class ThreatCreateManual(BaseModel):
+    type: str = Field(..., pattern=r"^(supply_chain|data_breach|leak|disclosure|report)$")
+    title: str = Field(..., min_length=1, max_length=512)
+    summary: str | None = None
+    severity: str = "medium"
+    details: dict = Field(default_factory=dict)

@@ -44,8 +44,18 @@ def _client_ip(request: Request) -> str:
 
 @router.post("/login", response_model=TokenResponse)
 async def login(body: LoginRequest, request: Request, session: SessionDep):
+    # Normalize the input — trim whitespace and lower-case so users who
+    # registered as "John.Doe" can still log in by typing "john.doe" or
+    # "JOHN.DOE  ". Username column is case-sensitive at the SQL level so
+    # we fold both sides via func.lower(). The user-create path also
+    # lowercases the username before insert, so the index lookup is fast.
+    from sqlalchemy import func
+    username_norm = (body.username or "").strip().lower()
     result = await session.execute(
-        select(User).options(selectinload(User.role)).where(User.username == body.username, User.active == True)
+        select(User).options(selectinload(User.role)).where(
+            func.lower(User.username) == username_norm,
+            User.active == True,
+        )
     )
     user = result.scalar_one_or_none()
     if not user or not verify_password(body.password, user.password_hash):

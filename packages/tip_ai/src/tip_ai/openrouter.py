@@ -56,7 +56,7 @@ class OpenRouterClient:
         *,
         response_format_json: bool = True,
         temperature: float = 0.2,
-        max_tokens: int = 1536,
+        max_tokens: int = 1500,
     ) -> dict[str, Any]:
         payload: dict[str, Any] = {
             "model": self._model,

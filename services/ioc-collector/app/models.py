@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String, UniqueConstraint, func
+from sqlalchemy import Boolean, DateTime, ForeignKey, Numeric, String, Text, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -32,6 +32,9 @@ class Indicator(Base):
     tags: Mapped[list[str]] = mapped_column(ARRAY(String), nullable=False, default=list)
     confidence_score: Mapped[float] = mapped_column(Numeric(3, 2), nullable=False, default=0.5)
     confidence_inputs: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+    analyst_status: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default="unreviewed"
+    )
 
 
 class IndicatorSource(Base):
@@ -53,6 +56,22 @@ class IndicatorSource(Base):
     malware_family: Mapped[str | None] = mapped_column(String(255), nullable=True)
     threat_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     raw: Mapped[dict] = mapped_column(JSONB, nullable=False, default=dict)
+
+
+class IndicatorNote(Base):
+    __tablename__ = "indicator_notes"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    indicator_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False, index=True)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    pinned: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    author: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 SourceHealth = build_source_health_table(METADATA)

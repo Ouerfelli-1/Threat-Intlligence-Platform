@@ -8,6 +8,10 @@ class DomainCreate(BaseModel):
     name: str
 
 
+class DomainUpdate(BaseModel):
+    active: bool | None = None
+
+
 class DomainOut(BaseModel):
     id: uuid.UUID
     name: str

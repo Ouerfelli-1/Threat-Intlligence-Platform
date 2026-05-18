@@ -4,7 +4,7 @@ from tip_auth import JWTAuthMiddleware
 from tip_common import create_service_app, wire_auth
 
 from app.db import close_engine, init_engine
-from app.routes import assets, profile
+from app.routes import assets, profile, tags
 from app.settings import get_settings
 
 settings = get_settings()
@@ -36,3 +36,4 @@ app.add_middleware(
 
 app.include_router(assets.router)
 app.include_router(profile.router)
+app.include_router(tags.router)

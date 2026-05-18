@@ -10,6 +10,7 @@ class FeedBase(BaseModel):
     kind: str = "rss"
     active: bool = True
     reliability: float = Field(0.7, ge=0.0, le=1.0)
+    tags: list[str] = Field(default_factory=list)
 
 
 class FeedCreate(FeedBase):
@@ -21,6 +22,7 @@ class FeedUpdate(BaseModel):
     url: str | None = None
     active: bool | None = None
     reliability: float | None = Field(None, ge=0.0, le=1.0)
+    tags: list[str] | None = None
 
 
 class FeedOut(FeedBase):
@@ -42,6 +44,7 @@ class ArticleOut(BaseModel):
     summary: str | None
     tags: list[str]
     confidence_score: float | None
+    analyst_status: str = "unreviewed"
 
 
 class ArticleList(BaseModel):
@@ -57,3 +60,27 @@ class IngestResult(BaseModel):
     articles_added: int
     articles_seen: int
     failed_sources: list[str]
+
+
+class AnalystStatusUpdate(BaseModel):
+    analyst_status: str = Field(..., pattern=r"^(unreviewed|relevant|not_relevant|escalated|reviewed)$")
+
+
+class InsightOverrideIn(BaseModel):
+    analyst_override: dict
+
+
+class AnalyzeRequest(BaseModel):
+    actions: list[str] | None = None
+    flowviz: bool = True
+    model: str | None = None
+
+
+class InsightOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    article_id: uuid.UUID | None = None
+    payload: dict
+    model_name: str | None = None
+    prompt_version: str | None = None
+    generated_at: datetime | None = None
+    analyst_override: dict | None = None

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 
-from tip_ai import OpenRouterClient
+from tip_ai import build_ai_client
 from tip_auth import JWTAuthMiddleware
 from tip_cache import Cache
 from tip_common import create_service_app, wire_auth
@@ -34,11 +34,29 @@ async def _startup(app: FastAPI) -> None:
         bootstrap_token=settings.secrets_bootstrap_token,
     )
     app.state.secrets = secrets
-    openrouter_key = await secrets.get("OPENROUTER_API_KEY")
-    app.state.ai_client = OpenRouterClient(
-        api_key=openrouter_key,
-        model=settings.flowviz_model,
-    )
+    ai_secrets: dict[str, str] = {}
+    # LITELLM_MASTER_KEY: required by the LiteLLM proxy (default client mode).
+    # Provider keys (OPENROUTER_API_KEY etc.) are kept here for the legacy
+    # ai_provider=openrouter path — the proxy itself reads them from the
+    # secrets vault at its own startup and we don't need them on the client.
+    for k in (
+        "LITELLM_MASTER_KEY",
+        "OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "GROQ_API_KEY", "GEMINI_API_KEY", "MISTRAL_API_KEY",
+        "COHERE_API_KEY", "TOGETHER_API_KEY", "DEEPSEEK_API_KEY",
+        "GITHUB_API_KEY",
+    ):
+        try:
+            ai_secrets[k] = await secrets.get(k)
+        except Exception:
+            ai_secrets[k] = ""
+    primary_override = await secrets.get_optional("AI_PRIMARY_MODEL")
+    if primary_override:
+        settings.ai_primary_model = primary_override
+    fallbacks_override = await secrets.get_optional("AI_FALLBACK_MODELS")
+    if fallbacks_override is not None:
+        settings.ai_fallback_models = fallbacks_override
+    app.state.ai_client = build_ai_client(ai_secrets, settings)
     await wire_auth(app, settings, settings.service_name)
     jwt = getattr(app.state, "service_jwt", None)
     if jwt:

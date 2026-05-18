@@ -8,6 +8,7 @@ class ContextProvider(Protocol):
     async def related_actors(self, item: dict[str, Any]) -> list[dict[str, Any]]: ...
     async def related_iocs(self, item: dict[str, Any]) -> list[dict[str, Any]]: ...
     async def related_articles(self, item: dict[str, Any]) -> list[dict[str, Any]]: ...
+    async def analyst_notes(self, item: dict[str, Any]) -> list[dict[str, Any]]: ...
 
 
 class NullContextProvider:
@@ -23,4 +24,7 @@ class NullContextProvider:
         return []
 
     async def related_articles(self, item: dict[str, Any]) -> list[dict[str, Any]]:
+        return []
+
+    async def analyst_notes(self, item: dict[str, Any]) -> list[dict[str, Any]]:
         return []
