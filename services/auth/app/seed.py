@@ -90,19 +90,28 @@ _SERVICE_ACCOUNTS = [
     ("asm", ["asm:read", "asm:write"]),
     ("domainwatch", ["domainwatch:read", "domainwatch:write", "ioc:read"]),
     (
+        # The scheduler TRIGGERS write operations on every other service
+        # (POST /ingest/run, /refresh/*, /scan/run, /check/run, /analyze).
+        # Without these write perms every scheduled fire 401s and the
+        # entire ingest pipeline silently stops. We had this bug live:
+        # every job in scheduler.job_run_history returned "missing bearer
+        # token" because outbound calls had no JWT AND the scheduler had
+        # no write perms anyway.
         "scheduler",
         [
             "scheduling:read",
             "scheduling:write",
-            "news:read",
+            "news:read",            "news:write",
             "vuln:read",
-            "threat:read",
-            "ioc:read",
-            "actors:read",
-            "integrations:read",
-            "asm:read",
-            "domainwatch:read",
+            "threat:read",          "threat:write",
+            "ioc:read",             "ioc:write",        "iocs:write",
+            "actors:read",          "actors:write",
+            "integrations:read",    "integrations:write",
+            "asm:read",             "asm:write",
+            "domainwatch:read",     "domainwatch:write",
             "indicator:read",
+            "intelligence:read",    "intelligence:write",  # vuln /refresh/*
+            "reports:read",         "reports:write",       # orchestrator /analyze*
         ],
     ),
     ("secrets", ["secrets:read", "secrets:write"]),

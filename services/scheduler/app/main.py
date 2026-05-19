@@ -2,10 +2,10 @@ from fastapi import FastAPI
 
 from tip_auth import JWTAuthMiddleware
 from tip_cache import Cache
-from tip_common import create_service_app, wire_auth
+from tip_common import create_service_app, obtain_service_jwt, wire_auth
 
 from app.db import close_engine, get_session_factory, init_engine
-from app.jobs import build_scheduler
+from app.jobs import build_scheduler, set_jwt_refresher
 from app.routes import scheduler
 from app.settings import get_settings
 
@@ -23,6 +23,20 @@ async def _startup(app: FastAPI) -> None:
     aps.start()
     app.state.scheduler = aps
     await wire_auth(app, settings, settings.service_name)
+
+    # The scheduler's outbound job fires need to carry its service JWT —
+    # otherwise the target services 401 every trigger. wire_auth stuck the
+    # JWT on app.state; bridge it into the jobs module via a refresher
+    # closure so jobs can also force a refresh if a stored JWT expires.
+    initial_jwt = getattr(app.state, "service_jwt", "") or ""
+
+    async def _refresh_jwt() -> str:
+        new_jwt = await obtain_service_jwt(settings, settings.service_name) or ""
+        if new_jwt:
+            app.state.service_jwt = new_jwt
+        return new_jwt
+
+    set_jwt_refresher(initial_jwt, _refresh_jwt)
 
 
 async def _shutdown(app: FastAPI) -> None:

@@ -42,6 +42,25 @@ _scheduler: AsyncIOScheduler | None = None
 _settings = None
 _session_factory = None
 
+# Service-JWT cache. main.py calls set_jwt_refresher() once at startup to
+# install the initial JWT obtained via wire_auth, plus a refresher closure
+# that re-invokes obtain_service_jwt when the cached one expires (which
+# manifests as a 401 from any downstream service).
+_service_jwt: str = ""
+_jwt_refresher = None  # async () -> str
+
+
+def set_jwt_refresher(initial_jwt: str, refresher) -> None:
+    global _service_jwt, _jwt_refresher
+    _service_jwt = initial_jwt or ""
+    _jwt_refresher = refresher
+
+
+def _auth_headers() -> dict:
+    if _service_jwt:
+        return {"Authorization": f"Bearer {_service_jwt}"}
+    return {}
+
 
 def build_scheduler(settings, session_factory) -> AsyncIOScheduler:
     global _scheduler, _settings, _session_factory
@@ -100,11 +119,34 @@ async def _fire_job(job_id: str, url_attr: str, path: str, method: str = "POST",
     # connect timeout stays at 10 s.
     http_timeout = httpx.Timeout(connect=10.0, read=min(max_runtime, 1800), write=60.0, pool=10.0)
 
+    global _service_jwt
     start = asyncio.get_event_loop().time()
     try:
         async with httpx.AsyncClient(timeout=http_timeout) as client:
             fn = getattr(client, method.lower())
-            resp = await fn(f"{base_url}{path}", json={"run_id": str(run_id)})
+            resp = await fn(
+                f"{base_url}{path}",
+                json={"run_id": str(run_id)},
+                headers=_auth_headers(),
+            )
+
+            # 401: cached service JWT likely expired. Refresh once and
+            # retry — going from "every job 401s for 24h" (the silent
+            # drift we hit) to a one-line self-heal.
+            if resp.status_code == 401 and _jwt_refresher is not None:
+                log.warning("scheduler job=%s got 401, refreshing service JWT", job_id)
+                try:
+                    new_jwt = await _jwt_refresher()
+                    if new_jwt:
+                        _service_jwt = new_jwt
+                        resp = await fn(
+                            f"{base_url}{path}",
+                            json={"run_id": str(run_id)},
+                            headers=_auth_headers(),
+                        )
+                except Exception as ref_exc:
+                    log.error("scheduler jwt_refresh_failed: %r", ref_exc)
+
         http_status = resp.status_code
         # 202 means the service accepted the work and will run it asynchronously.
         # The actual outcome will arrive via POST /internal/runs/{run_id}/complete.
