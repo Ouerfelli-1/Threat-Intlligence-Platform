@@ -159,7 +159,13 @@ services:
       dockerfile: services/auth/Dockerfile
     environment:
       TIP_ENV: ${TIP_ENV:-development}
-      DISABLE_AUTH: ${DISABLE_AUTH:-true}
+      # Auth is the ONLY service that keeps DISABLE_AUTH=false. Its own
+      # endpoints (/me, /users, /roles, /sessions) need to know the
+      # caller's identity to enforce admin-only writes and return the
+      # right user profile. All other services trust the Docker network
+      # and short-circuit via DISABLE_AUTH=true — see the platform-wide
+      # auth simplification (auth lives at the BFF<->browser edge only).
+      DISABLE_AUTH: "false"
       DATABASE_URL: postgresql+asyncpg://tip:${POSTGRES_PASSWORD}@pgbouncer:6432/tip
       REDIS_URL: redis://redis:6379/0
       SECRETS_URL: http://secrets:8012
