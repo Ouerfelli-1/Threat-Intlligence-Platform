@@ -40,10 +40,41 @@ general_settings:
 # Fallbacks — used when an upstream provider returns 5xx / 429 / auth error.
 # Each entry: { primary_model: [fallback_1, fallback_2, ...] }
 # These run server-side inside the proxy so clients don't have to know about them.
+#
+# Strategy: within GitHub Models, the daily quotas are independent per model.
+# When gpt-5-chat (12/day) or gpt-4.1 (50/day) exhausts, fall sideways within
+# github/* so we keep working. ONLY drop to openrouter as a last resort —
+# the OpenRouter key on file has 0 credits and 402s every time, so it serves
+# as an "everything is dead" sentinel rather than a real fallback.
 router_settings:
   fallbacks:
-    - "*":                          # default for ANY primary
-        - "openrouter/openai/gpt-4o-mini"
+    # gpt-5-chat is the tightest quota; cascade through gpt-4.1 -> gpt-4o.
+    - "github/gpt-5-chat":
+        - "github/gpt-4.1"
+        - "github/gpt-4o"
+        - "openrouter/anthropic/claude-3-5-haiku"
+    # gpt-4.1 is the new default; cascade to gpt-5-chat (when its daily
+    # bucket has room) then gpt-4o.
+    - "github/gpt-4.1":
+        - "github/gpt-5-chat"
+        - "github/gpt-4o"
+        - "openrouter/anthropic/claude-3-5-haiku"
+    # gpt-4o cascade — same pool, sideways to its smaller / different siblings.
+    - "github/gpt-4o":
+        - "github/gpt-4.1"
+        - "github/gpt-4o-mini"
+        - "openrouter/anthropic/claude-3-5-haiku"
+    # Anthropic direct calls — we have no key, so jump straight to github
+    # before openrouter (which is 0-credits) so analysts at least get a
+    # response from gpt-4.1 / gpt-4o instead of a 402.
+    - "anthropic/*":
+        - "github/gpt-4.1"
+        - "github/gpt-4o"
+        - "openrouter/anthropic/claude-3-5-haiku"
+    # Default catch-all (any other model id the client passes).
+    - "*":
+        - "github/gpt-4.1"
+        - "github/gpt-4o"
         - "openrouter/anthropic/claude-3-5-haiku"
   num_retries: 1
   timeout: 60

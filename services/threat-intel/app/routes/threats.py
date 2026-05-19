@@ -234,10 +234,15 @@ async def override_threat_insight(threat_id: UUID, body: InsightOverrideIn, sess
 # rules benefit a lot from a larger context window and stronger reasoning.
 
 _SMART_MODEL_DEFAULTS = [
-    # gpt-5-chat first — newest, separate per-day quota bucket from gpt-4o
-    # so we don't share exhaustion with the rest of the platform.
-    "github/gpt-5-chat",
+    # gpt-4.1 first: GitHub Models gives it the largest daily quota
+    # (50/day at our PAT tier). gpt-5-chat is capped at 12/day which
+    # exhausts after ~4 analyses — analysts hit the 429 wall and
+    # generation silently stops. gpt-4o is the last-resort fallback.
+    # gpt-5-chat sits between as the "smartest when available" option;
+    # the smart picker walks the list in order, so once gpt-4.1's quota
+    # is spent we naturally try gpt-5-chat / gpt-4o.
     "github/gpt-4.1",
+    "github/gpt-5-chat",
     "github/gpt-4o",
     "anthropic/claude-3-5-sonnet-20241022",
 ]

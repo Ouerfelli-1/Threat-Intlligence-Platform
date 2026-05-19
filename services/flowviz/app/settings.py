@@ -27,8 +27,8 @@ class Settings(BaseServiceSettings):
     # `FLOWVIZ_AI_FALLBACK_MODELS=github/gpt-5-chat,github/gpt-4.1`) in the
     # same vault — the startup hook in main.py picks them up. Restarts only
     # flowviz; no code change needed.
-    ai_primary_model: str = "github/gpt-5-chat"
-    ai_fallback_models: str = "github/gpt-4.1,github/gpt-4o"
+    ai_primary_model: str = "github/gpt-4.1"
+    ai_fallback_models: str = "github/gpt-5-chat,github/gpt-4o"
 
 
 @lru_cache

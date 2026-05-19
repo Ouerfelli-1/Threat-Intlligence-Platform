@@ -208,8 +208,13 @@ async def override_actor_insight(actor_id: UUID, body: InsightOverrideIn, sessio
 # threat to its author actor.
 
 _SMART_MODEL_DEFAULTS = [
-    "github/gpt-5-chat",
+    # gpt-4.1 first — GitHub Models gives it ~50 req/day vs gpt-5-chat's
+    # ~12/day at our PAT tier. With the old gpt-5-first ordering an
+    # analyst hit the daily wall after ~4 "Re-analyze" clicks and every
+    # subsequent generation silently 429'd. Keep gpt-5-chat in the list
+    # so the picker tries it once gpt-4.1's daily quota is spent.
     "github/gpt-4.1",
+    "github/gpt-5-chat",
     "github/gpt-4o",
     "anthropic/claude-3-5-sonnet-20241022",
 ]
