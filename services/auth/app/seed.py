@@ -92,25 +92,24 @@ _SERVICE_ACCOUNTS = [
     (
         # The scheduler TRIGGERS write operations on every other service
         # (POST /ingest/run, /refresh/*, /scan/run, /check/run, /analyze).
-        # Without these write perms every scheduled fire 401s and the
-        # entire ingest pipeline silently stops. We had this bug live:
-        # every job in scheduler.job_run_history returned "missing bearer
-        # token" because outbound calls had no JWT AND the scheduler had
-        # no write perms anyway.
+        # Without these write perms every scheduled fire 401/403s and the
+        # entire ingest pipeline silently stops. The list below is keyed
+        # off the require_permission() values that actually exist in the
+        # codebase — singular forms (threat:*, ioc:*, news:*, vuln:*,
+        # indicator:*) ARE NOT CHECKED ANYWHERE and were dead grants.
+        # Re-audit with:
+        #   grep -rh require_permission services/*/app/routes/ \
+        #     | grep -oE '"[a-z_]+:(read|write|delete)"' | sort -u
         "scheduler",
         [
-            "scheduling:read",
-            "scheduling:write",
-            "news:read",            "news:write",
-            "vuln:read",
-            "threat:read",          "threat:write",
-            "ioc:read",             "ioc:write",        "iocs:write",
-            "actors:read",          "actors:write",
-            "integrations:read",    "integrations:write",
-            "asm:read",             "asm:write",
-            "domainwatch:read",     "domainwatch:write",
-            "indicator:read",
-            "intelligence:read",    "intelligence:write",  # vuln /refresh/*
+            "scheduling:read",      "scheduling:write",
+            "intelligence:read",    "intelligence:write",  # news /ingest, vuln /refresh/*
+            "threats:read",         "threats:write",       # threat-intel /ingest
+            "iocs:read",            "iocs:write",          # ioc-collector /ingest
+            "actors:read",          "actors:write",        # threat-actors /refresh
+            "integrations:read",    "integrations:write",  # integrations /wazuh/sync
+            "asm:read",             "asm:write",           # asm /scan/run
+            "domainwatch:read",     "domainwatch:write",   # domainwatch /check/run
             "reports:read",         "reports:write",       # orchestrator /analyze*
         ],
     ),
