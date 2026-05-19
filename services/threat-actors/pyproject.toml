@@ -19,6 +19,9 @@ dependencies = [
     "tip-source-health @ file:///app/packages/tip_source_health",
     "tip-secrets @ file:///app/packages/tip_secrets",
     "tip-schemas @ file:///app/packages/tip_schemas",
+    # AI client for the /actors/{id}/analyze endpoint — same shape as
+    # threat-intel (hunting hypothesis + IOC extraction + flowviz call).
+    "tip-ai @ file:///app/packages/tip_ai",
 ]
 
 [tool.setuptools.packages.find]

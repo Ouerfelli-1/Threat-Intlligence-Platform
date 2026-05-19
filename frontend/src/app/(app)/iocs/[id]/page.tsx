@@ -81,7 +81,6 @@ export default function IndicatorDetailPage() {
     );
   }
 
-  const conf = indicator.confidence_score ?? 0;
   const sources = indicator.sources ?? [];
 
   return (
@@ -126,30 +125,9 @@ export default function IndicatorDetailPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 12 }}>
         {/* Left */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {/* Confidence card */}
-          <div className="card">
-            <div className="card-h"><Sparkles s={13} /><div className="t">Confidence</div></div>
-            <div style={{ padding: 14 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 12 }}>
-                <div style={{ fontSize: 32, fontWeight: 600, fontFamily: 'var(--mono)', color: conf > 0.85 ? 'var(--low)' : conf > 0.6 ? 'var(--med)' : 'var(--high)' }}>
-                  {conf.toFixed(2)}
-                </div>
-                <div style={{ flex: 1 }}>
-                  <Bar value={conf} variant={conf > 0.85 ? 'low' : conf > 0.6 ? '' : 'high'} />
-                </div>
-              </div>
-              {indicator.confidence_inputs && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, fontSize: 11.5 }}>
-                  {Object.entries(indicator.confidence_inputs).map(([k, v]) => (
-                    <div key={k} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 8px', background: 'var(--bg-elev)', borderRadius: 4 }}>
-                      <span style={{ color: 'var(--text-4)' }}>{k.replace(/_/g, ' ')}</span>
-                      <span className="mono" style={{ color: 'var(--text-2)' }}>{typeof v === 'number' ? (v as number).toFixed(2) : String(v)}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          {/* Confidence card intentionally removed — operator dropped
+              numeric confidence platform-wide. The IOC's standing speaks
+              for itself via its sources, tags and analyst status. */}
 
           {/* Sources card */}
           <div className="card">
@@ -191,7 +169,6 @@ export default function IndicatorDetailPage() {
                 ['Type', indicator.type],
                 ['First seen', fmtDate(indicator.first_seen)],
                 ['Last seen', fmtDate(indicator.last_seen)],
-                ['Confidence', conf.toFixed(2)],
                 ['Sources', String(sources.length)],
                 ['Status', indicator.analyst_status || 'unreviewed'],
               ].map(([k, v]) => (

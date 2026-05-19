@@ -11,6 +11,8 @@ class Settings(BaseServiceSettings):
     malpedia_api_token: str = ""
     orchestrator_url: str = "http://orchestrator:8014"
     scheduler_url: str = "http://scheduler:8011"
+    flowviz_url: str = "http://flowviz:8008"
+    ioc_collector_url: str = "http://ioc-collector:8004"
 
 
 @lru_cache

@@ -50,13 +50,22 @@ async def _startup(app: FastAPI) -> None:
             ai_secrets[k] = await secrets.get(k)
         except Exception:
             ai_secrets[k] = ""
-    primary_override = await secrets.get_optional("AI_PRIMARY_MODEL")
+    # Flowviz is opinionated about its model choice (see settings.py) — attack
+    # flows require a top-tier model, not the cheap default the global vault
+    # secret AI_PRIMARY_MODEL points at. Honour a flowviz-specific override
+    # if the operator sets one explicitly; otherwise stick with our defaults.
+    primary_override = await secrets.get_optional("FLOWVIZ_AI_PRIMARY_MODEL")
     if primary_override:
         settings.ai_primary_model = primary_override
-    fallbacks_override = await secrets.get_optional("AI_FALLBACK_MODELS")
+    fallbacks_override = await secrets.get_optional("FLOWVIZ_AI_FALLBACK_MODELS")
     if fallbacks_override is not None:
         settings.ai_fallback_models = fallbacks_override
     app.state.ai_client = build_ai_client(ai_secrets, settings)
+    # Stash settings + secrets bag so per-request model overrides can build a
+    # one-off client (used when threat-intel asks flowviz to use the same
+    # smart-tier model as the rest of the threat insight).
+    app.state.settings = settings
+    app.state.ai_secrets = ai_secrets
     await wire_auth(app, settings, settings.service_name)
     jwt = getattr(app.state, "service_jwt", None)
     if jwt:

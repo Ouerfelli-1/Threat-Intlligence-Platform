@@ -1,4 +1,0 @@
-redis==5.0.1
-apscheduler==3.10.4
-sqlalchemy==2.0.25
-psycopg2-binary==2.9.9

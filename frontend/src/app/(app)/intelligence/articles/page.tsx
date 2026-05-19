@@ -89,22 +89,20 @@ export default function ArticleListPage() {
                 <SortHeader label="Source" sortKey="source_name" currentKey={sortBy} currentDir={sortDir} onToggle={toggle} style={{ width: 160 }} />
                 <SortHeader label="Fetched" sortKey="fetched_at" currentKey={sortBy} currentDir={sortDir} onToggle={toggle} style={{ width: 140 }} />
                 <SortHeader label="Published" sortKey="published_at" currentKey={sortBy} currentDir={sortDir} onToggle={toggle} style={{ width: 140 }} />
-                <SortHeader label="Confidence" sortKey="confidence_score" currentKey={sortBy} currentDir={sortDir} onToggle={toggle} style={{ width: 140 }} />
                 <th style={{ width: 240 }}>Tags</th>
                 <th style={{ width: 40 }}></th>
               </tr>
             </thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>Loading articles...</td></tr>
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>Loading articles...</td></tr>
               )}
               {!isLoading && items.length === 0 && (
-                <tr><td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>
+                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>
                   No articles found. Trigger an ingest from the scheduler.
                 </td></tr>
               )}
               {items.map((a) => {
-                const conf = a.confidence_score ?? 0;
                 return (
                   <tr key={a.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/intelligence/articles/${a.id}`)}>
                     <td>{stBadge(a.analyst_status)}</td>
@@ -114,7 +112,6 @@ export default function ArticleListPage() {
                     <td>{a.source_name}</td>
                     <td className="mono" style={{ fontSize: 11 }}>{fmtDate(a.fetched_at)}</td>
                     <td className="mono" style={{ fontSize: 11 }}>{fmtDate(a.published_at)}</td>
-                    <td><Bar value={conf} variant={conf > 0.85 ? 'low' : conf > 0.6 ? '' : 'high'} /></td>
                     <td>
                       <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                         {a.tags.slice(0, 3).map(t => <span key={t} className="tag">{t}</span>)}

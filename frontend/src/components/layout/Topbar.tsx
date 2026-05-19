@@ -6,7 +6,7 @@ import {
   Bell, Sparkles, Search, ChevronDown, X, Clock,
   AlertTriangle, Settings, Lock, Users,
 } from '@/components/icons';
-import { useStore } from '@/lib/store';
+import { useStore, useIsAdmin } from '@/lib/store';
 import { useRuns, RunInfo } from '@/lib/hooks';
 import { api } from '@/lib/api';
 
@@ -42,14 +42,18 @@ export default function Topbar({
   const router = useRouter();
   const user = useStore((s) => s.user);
   const clearAuth = useStore((s) => s.clearAuth);
+  const isAdminUser = useIsAdmin();
 
   const initials = user?.username
     ? user.username.split('.').map(p => p[0]?.toUpperCase()).join('').slice(0, 2)
-    : 'YA';
+    : '?';
   const displayName = user?.username
     ? user.username.split('.').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
-    : 'Yassine A.';
-  const role = user?.role || 'SOC Analyst';
+    : 'Guest';
+  // Role label was hardcoded to "SOC Analyst" as a fallback, which made
+  // every non-admin look like an analyst. Use the actual role from /me, or
+  // a neutral "user" when missing — never invent a job title.
+  const role = user?.role || 'user';
 
   /* ── State ─────────────────────── */
   const [showPalette, setShowPalette] = useState(false);
@@ -316,22 +320,28 @@ export default function Topbar({
                   <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text)' }}>{displayName}</div>
                   <div style={{ fontSize: 10, color: 'var(--text-4)' }}>{role}</div>
                 </div>
-                <div
-                  style={{ padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-2)' }}
-                  onClick={() => { router.push('/admin/users'); setShowUserMenu(false); }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elev)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <Users s={13} /> Users & Roles
-                </div>
-                <div
-                  style={{ padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-2)' }}
-                  onClick={() => { router.push('/admin/sessions'); setShowUserMenu(false); }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elev)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                >
-                  <Lock s={13} /> Sessions
-                </div>
+                {/* Admin-only menu items — hidden for viewer/analyst users
+                    so the dropdown doesn't dangle links that would 403. */}
+                {isAdminUser && (
+                  <>
+                    <div
+                      style={{ padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-2)' }}
+                      onClick={() => { router.push('/admin/users'); setShowUserMenu(false); }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elev)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <Users s={13} /> Users & Roles
+                    </div>
+                    <div
+                      style={{ padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-2)' }}
+                      onClick={() => { router.push('/admin/sessions'); setShowUserMenu(false); }}
+                      onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-elev)')}
+                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                    >
+                      <Lock s={13} /> Sessions
+                    </div>
+                  </>
+                )}
                 <div
                   style={{ padding: '8px 14px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-2)' }}
                   onClick={() => { router.push('/settings'); setShowUserMenu(false); }}

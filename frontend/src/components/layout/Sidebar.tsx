@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { I, Settings } from '@/components/icons';
+import { useIsAdmin } from '@/lib/store';
 
 interface SidebarItem {
   id: string;
@@ -17,6 +18,10 @@ interface SidebarItem {
 interface SidebarSection {
   title?: string;
   items: SidebarItem[];
+  /** If true, only show this section to admin users (those with "*" perm).
+   *  Backend already 403s the underlying endpoints — this prevents the nav
+   *  links from misleading a viewer into thinking they have admin access. */
+  adminOnly?: boolean;
 }
 
 // Hardcoded count badges (articles=241, cves=47, etc) were stripped — they
@@ -80,6 +85,7 @@ const sections: SidebarSection[] = [
   },
   {
     title: 'Admin',
+    adminOnly: true,
     items: [
       { id: 'users', label: 'Users & Roles', icon: 'Users', href: '/admin/users' },
       { id: 'sessions', label: 'Sessions', icon: 'Lock', href: '/admin/sessions' },
@@ -107,6 +113,12 @@ function resolveActive(pathname: string): string {
 export default function Sidebar() {
   const pathname = usePathname();
   const active = resolveActive(pathname);
+  const isAdminUser = useIsAdmin();
+
+  // Hide admin-only sections from non-admin users. The backend already 403s
+  // /users, /sessions, /roles for them — but the navigation links would
+  // otherwise dangle and make a viewer think they have admin access.
+  const visibleSections = sections.filter((s) => !s.adminOnly || isAdminUser);
 
   return (
     <div className="sb">
@@ -117,7 +129,7 @@ export default function Sidebar() {
             Cyber Threat<br />Intelligence Platform
           </div>
         </div>
-        {sections.map((sec, i) => (
+        {visibleSections.map((sec, i) => (
           <React.Fragment key={i}>
             {sec.title && <div className="sb-section">{sec.title}</div>}
             {sec.items.map((it) => {
@@ -137,12 +149,16 @@ export default function Sidebar() {
             })}
           </React.Fragment>
         ))}
-        <div className="sb-foot">
-          <Link href="/settings" className="sb-item">
-            <span className="ico"><Settings s={14} /></span>
-            <span>Settings</span>
-          </Link>
-        </div>
+        {/* Settings exposes secrets management + provider keys — admin-only on
+            the backend, so the footer link is also gated to avoid dangling. */}
+        {isAdminUser && (
+          <div className="sb-foot">
+            <Link href="/settings" className="sb-item">
+              <span className="ico"><Settings s={14} /></span>
+              <span>Settings</span>
+            </Link>
+          </div>
+        )}
       </div>
     </div>
   );

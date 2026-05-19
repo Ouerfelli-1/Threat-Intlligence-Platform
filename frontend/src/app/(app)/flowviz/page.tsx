@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useCallback, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Activity, Play, Refresh, ChevronRight, Download } from '@/components/icons';
 import { api } from '@/lib/api';
+import AttackFlowGraph from '@/components/shared/AttackFlowGraph';
 
 /* ── types ──────────────────────────────────────────────────────────────────
  *
@@ -47,25 +48,6 @@ interface FlowResult {
   output: FlowOutput;
   model_name?: string;
   generated_at?: string;
-}
-
-/* ── helpers ─────────────────────────────────────────────────────────────── */
-
-const NODE_COLORS: Record<string, string> = {
-  action:          'var(--accent)',
-  tool:            '#a371f7',
-  malware:         '#f85149',
-  asset:           '#3fb950',
-  infrastructure:  '#d29922',
-  vulnerability:   '#f0883e',
-  process:         '#79c0ff',
-  file:            '#8b949e',
-  operator:        '#bc8cff',
-  url:             '#58a6ff',
-};
-
-function nodeColor(type: string): string {
-  return NODE_COLORS[type.toLowerCase()] ?? 'var(--text-3)';
 }
 
 /* ── page ────────────────────────────────────────────────────────────────── */
@@ -174,59 +156,14 @@ export default function FlowvizPage() {
               {JSON.stringify(result, null, 2)}
             </pre>
           ) : (
-            <div style={{ padding: 14 }}>
-              {/* Render nodes as a visual flow: cards connected by arrows.
-                  Backend wraps display fields inside node.data — unwrap once here. */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                {nodes.map((node, i) => {
-                  const color = nodeColor(node.type);
-                  const data = node.data ?? {};
-                  const label = (data.label as string | undefined) ?? node.id;
-                  const description = data.description as string | undefined;
-                  const techniqueId = data.technique_id as string | undefined;
-                  const techniqueName = data.technique_name as string | undefined;
-                  return (
-                    <React.Fragment key={node.id}>
-                      <div style={{
-                        padding: '10px 14px',
-                        background: 'var(--bg-elev)',
-                        border: `1px solid ${color}40`,
-                        borderLeft: `3px solid ${color}`,
-                        borderRadius: 6,
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <span className="tag" style={{ background: `${color}18`, color, border: `1px solid ${color}40`, fontSize: 9, fontWeight: 600, textTransform: 'uppercase' }}>
-                            {node.type}
-                          </span>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{label}</span>
-                          {techniqueId && (
-                            <span className="mono" style={{ fontSize: 10, color: 'var(--text-4)' }}>{techniqueId}</span>
-                          )}
-                        </div>
-                        {(description || techniqueName) && (
-                          <div style={{ fontSize: 11.5, color: 'var(--text-3)', lineHeight: 1.4 }}>
-                            {techniqueName && <span style={{ color: 'var(--text-2)' }}>{techniqueName} — </span>}
-                            {description}
-                          </div>
-                        )}
-                      </div>
-                      {/* Arrow between nodes */}
-                      {i < nodes.length - 1 && (
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px 0', color: 'var(--text-4)' }}>
-                          <div style={{ width: 1, height: 16, background: 'var(--border)' }} />
-                        </div>
-                      )}
-                    </React.Fragment>
-                  );
-                })}
-              </div>
+            <div style={{ padding: 0 }}>
+              {/* ReactFlow canvas — pannable, zoomable, dagre auto-layout. */}
+              <AttackFlowGraph nodes={nodes} edges={edges} height={620} />
 
-              {/* Edge relationships (if they carry labels) */}
+              {/* Edge relationships (if any carry labels) — surfaced below the
+                  graph because graph labels are abbreviated on long flows. */}
               {edges.some(e => e.label) && (
-                <div style={{ marginTop: 16 }}>
+                <div style={{ padding: 14 }}>
                   <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Relationships</div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                     {edges.filter(e => e.label).map((e, i) => (

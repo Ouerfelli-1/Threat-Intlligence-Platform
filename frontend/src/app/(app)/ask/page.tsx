@@ -69,14 +69,8 @@ function ResultCard({ result }: { result: AskResult }) {
         </pre>
       )}
 
-      {/* Confidence badge */}
-      {Boolean((result as Record<string, unknown>).confidence) && (
-        <div style={{ marginBottom: 10 }}>
-          <span className={`badge ${{ high: 'low', medium: 'med', low: 'high' }[String((result as Record<string, unknown>).confidence)] ?? 'mute'}`}>
-            confidence: {String((result as Record<string, unknown>).confidence)}
-          </span>
-        </div>
-      )}
+      {/* Confidence badge intentionally removed (operator dropped numeric
+          confidence metrics platform-wide). */}
 
       {/* Supporting evidence */}
       {supporting.length > 0 && (

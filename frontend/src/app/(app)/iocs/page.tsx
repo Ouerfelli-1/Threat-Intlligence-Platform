@@ -167,18 +167,8 @@ export default function IocsPage() {
           <option value="sha1">SHA-1</option>
           <option value="md5">MD5</option>
         </select>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11.5, color: 'var(--text-3)' }}>
-          Confidence &ge;
-          <input
-            type="range"
-            min={0}
-            max={100}
-            value={minConf * 100}
-            onChange={(e) => { setMinConf(parseInt(e.target.value) / 100); setPage(1); }}
-            style={{ width: 120 }}
-          />
-          <span className="mono" style={{ fontSize: 11, width: 32 }}>{minConf.toFixed(2)}</span>
-        </div>
+        {/* Confidence range slider removed — operator dropped numeric
+            confidence metrics. The minConf state lives on but stays 0. */}
       </FilterBar>
 
       <div className="card" style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -189,16 +179,15 @@ export default function IocsPage() {
               <SortHeader label="Value" sortKey="normalized_value" currentKey={sortBy} currentDir={sortDir} onToggle={toggle} />
               <SortHeader label="First seen" sortKey="first_seen" currentKey={sortBy} currentDir={sortDir} onToggle={toggle} style={{ width: 160 }} />
               <SortHeader label="Last seen" sortKey="last_seen" currentKey={sortBy} currentDir={sortDir} onToggle={toggle} style={{ width: 160 }} />
-              <SortHeader label="Confidence" sortKey="confidence_score" currentKey={sortBy} currentDir={sortDir} onToggle={toggle} style={{ width: 140 }} />
               <th style={{ width: 220 }}>Tags</th>
               <th style={{ width: 40 }}></th>
             </tr></thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>Loading IOCs...</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>Loading IOCs...</td></tr>
               )}
               {!isLoading && items.length === 0 && (
-                <tr><td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>No indicators match the filters.</td></tr>
+                <tr><td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-4)', padding: 30 }}>No indicators match the filters.</td></tr>
               )}
               {items.map((ioc) => (
                 <tr key={ioc.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/iocs/${ioc.id}`)}>
@@ -208,7 +197,6 @@ export default function IocsPage() {
                   </td>
                   <td className="mono" style={{ fontSize: 11 }}>{fmtDate(ioc.first_seen)}</td>
                   <td className="mono" style={{ fontSize: 11 }}>{fmtDate(ioc.last_seen)}</td>
-                  <td><Bar value={ioc.confidence_score} variant={ioc.confidence_score > 0.85 ? 'low' : ioc.confidence_score > 0.6 ? '' : 'high'} /></td>
                   <td>
                     <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
                       {ioc.tags.slice(0, 3).map((t) => <span key={t} className="tag">{t}</span>)}
@@ -326,7 +314,6 @@ export default function IocsPage() {
                       <th style={{ width: 80 }}>Type</th>
                       <th>Value</th>
                       <th style={{ width: 110 }}>Status</th>
-                      <th style={{ width: 110 }}>Confidence</th>
                       <th style={{ width: 40 }}></th>
                     </tr></thead>
                     <tbody>
@@ -339,9 +326,6 @@ export default function IocsPage() {
                             {h.found
                               ? <span style={{ color: '#f85149', fontSize: 11 }}><Crosshair s={10} /> in library</span>
                               : <span style={{ color: '#3fb950', fontSize: 11 }}><Check s={10} /> clean</span>}
-                          </td>
-                          <td className="mono" style={{ fontSize: 11 }}>
-                            {h.indicator ? h.indicator.confidence_score.toFixed(2) : '—'}
                           </td>
                           <td>{h.found && <span style={{ color: 'var(--accent)' }}>›</span>}</td>
                         </tr>

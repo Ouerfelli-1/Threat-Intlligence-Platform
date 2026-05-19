@@ -171,8 +171,6 @@ export default function ArticleDetailPage() {
     );
   }
 
-  const conf = article.confidence_score ?? 0;
-
   return (
     <div style={{ height: '100%', display: 'grid', gridTemplateColumns: '60% 40%', overflow: 'hidden' }}>
       {/* LEFT */}
@@ -221,15 +219,8 @@ export default function ArticleDetailPage() {
           <span>{fmtDate(article.published_at ?? article.fetched_at)}</span>
         </div>
 
-        {/* Mini metrics row */}
+        {/* Mini metrics row — Confidence column dropped platform-wide. */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-          <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6 }}>
-            <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Confidence</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: conf > 0.85 ? 'var(--low)' : conf > 0.6 ? 'var(--med)' : 'var(--high)', fontFamily: 'var(--mono)' }}>{conf.toFixed(2)}</div>
-              <Bar value={conf} variant={conf > 0.85 ? 'low' : conf > 0.6 ? '' : 'high'} />
-            </div>
-          </div>
           <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6 }}>
             <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Status</div>
             <span className={`badge ${statusBadgeClass(article.analyst_status)}`}>{article.analyst_status || 'unreviewed'}</span>

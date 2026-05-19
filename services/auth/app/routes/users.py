@@ -96,17 +96,41 @@ async def update_user(user_id: uuid.UUID, body: UserUpdate, session: SessionDep)
     if not user:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "User not found")
 
+    # Track whether anything security-sensitive changed. Role / supplementary
+    # perms / active=False all mean "this user's existing JWT is now stale
+    # and shouldn't be trusted". We revoke their sessions so /me kicks them
+    # back to the login screen.
+    perms_changed = False
+
     if body.password is not None:
         user.password_hash = hash_password(body.password)
-    if body.role_id is not None:
+        perms_changed = True  # password reset implies "treat this as a logout"
+    if body.role_id is not None and body.role_id != user.role_id:
         role = await session.get(Role, body.role_id)
         if not role:
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Role not found")
         user.role_id = body.role_id
-    if body.supplementary_permissions is not None:
+        perms_changed = True
+    if body.supplementary_permissions is not None and set(body.supplementary_permissions) != set(user.supplementary_permissions or []):
         user.supplementary_permissions = body.supplementary_permissions
-    if body.active is not None:
+        perms_changed = True
+    if body.active is not None and body.active != user.active:
         user.active = body.active
+        if not body.active:
+            perms_changed = True  # deactivating = log them out
+
+    if perms_changed:
+        # Stateless JWTs can't be "revoked" mid-flight, but we mark every
+        # active session for this user as revoked in the DB. /me checks the
+        # sessions table; on the next call from the demoted user, /me returns
+        # 401 and the frontend's api.ts auto-clears auth + bounces to /login.
+        from sqlalchemy import update as _update
+        from app.models import Session as _Session
+        await session.execute(
+            _update(_Session)
+            .where(_Session.user_id == user_id, _Session.revoked == False)  # noqa: E712
+            .values(revoked=True)
+        )
 
     await session.commit()
     await session.refresh(user, ["role"])

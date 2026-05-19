@@ -10,14 +10,19 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from tip_ai import LiteLLMError, LiteLLMRateLimitError, LiteLLMRequestTooLargeError
+from tip_ai import (
+    LiteLLMError,
+    LiteLLMRateLimitError,
+    LiteLLMRequestTooLargeError,
+    build_ai_client,
+)
 from tip_auth import require_permission
 from tip_db import get_session
 
 from app.db import get_session_factory
 from app.models import Flow
 from app.prompts import DIRECT_FLOW_PROMPT, PROMPT_VERSION
-from app.schemas import FlowOut, FlowRequest
+from app.schemas import FlowOut, FlowOutput, FlowRequest
 
 router = APIRouter(prefix="/flows", tags=["flows"])
 
@@ -32,24 +37,51 @@ async def _session_dep():
 SessionDep = Annotated[AsyncSession, Depends(_session_dep)]
 
 
-def _cache_key(input_text: str) -> str:
-    return hashlib.sha256(f"{input_text}{PROMPT_VERSION}".encode()).hexdigest()
+def _cache_key(input_text: str, model: str | None = None) -> str:
+    # Include the model in the cache key — different models can produce
+    # different flow JSON, and a stale gpt-4o-mini result shouldn't shadow
+    # a fresh gpt-4o one (or vice versa).
+    suffix = f"|{model}" if model else ""
+    return hashlib.sha256(f"{input_text}{PROMPT_VERSION}{suffix}".encode()).hexdigest()
+
+
+def _client_for(request: Request, override_model: str | None):
+    """Return the global client, or a one-off client pinned to `override_model`.
+
+    Lets callers (notably threat-intel) request the same smart-tier model
+    they used for the hunting hypothesis, so the whole insight shares one
+    quota pool. Falls back silently to the global client if the secrets
+    bag isn't on app.state (legacy code path).
+    """
+    if not override_model:
+        return request.app.state.ai_client
+    from copy import copy
+    settings = request.app.state.settings
+    secrets = getattr(request.app.state, "ai_secrets", {}) or {}
+    smart_settings = copy(settings)
+    smart_settings.ai_primary_model = override_model
+    return build_ai_client(secrets, smart_settings)
 
 
 @router.post("", response_model=FlowOut, dependencies=[Depends(require_permission("flowviz:read"))])
 async def generate_flow(body: FlowRequest, request: Request, session: SessionDep):
-    cache_key = _cache_key(body.input)
+    cache_key = _cache_key(body.input, body.model)
 
+    # Cache hit ONLY when the cached entry actually has nodes — an empty
+    # output usually means the upstream model failed/quota'd; don't poison
+    # the cache with that, let the next call try fresh.
     result = await session.execute(select(Flow).where(Flow.input_hash == cache_key))
     cached = result.scalar_one_or_none()
-    if cached:
+    if cached and (cached.output or {}).get("nodes"):
         return _to_out(cached)
+
+    client = _client_for(request, body.model)
 
     # Wrap the LLM call so upstream rate limits / oversize payloads / generic
     # failures surface to the client as proper HTTP statuses with actionable
     # messages, instead of leaking a 500 traceback.
     try:
-        output = await _call_ai(request, body.input, body.system)
+        output = await _call_ai(client, body.input, body.system)
     except LiteLLMRateLimitError as exc:
         retry = exc.retry_after_seconds
         detail = "AI provider is rate-limited; please retry in a moment."
@@ -66,17 +98,33 @@ async def generate_flow(body: FlowRequest, request: Request, session: SessionDep
         raise HTTPException(status.HTTP_502_BAD_GATEWAY,
                             f"AI provider failed: {str(exc)[:200]}") from exc
 
-    flow = Flow(
+    # Only persist when the AI actually returned a graph — caching empty
+    # results means a transient provider failure permanently shadows the
+    # real flow on every retry.
+    has_nodes = bool((output or {}).get("nodes"))
+    if has_nodes:
+        flow = Flow(
+            id=uuid.uuid4(),
+            input_hash=cache_key,
+            input_text=body.input[:10000],
+            output=output,
+            model_name=client.model,
+            generated_at=datetime.now(timezone.utc),
+        )
+        session.add(flow)
+        await session.commit()
+        return _to_out(flow)
+
+    # Empty result — return an ephemeral envelope so the client still gets
+    # something to render (the threat-intel caller looks for `error` or
+    # `output.nodes`), but DON'T commit to the cache.
+    return FlowOut(
         id=uuid.uuid4(),
         input_hash=cache_key,
-        input_text=body.input[:10000],
-        output=output,
-        model_name=request.app.state.ai_client.model,
+        output=FlowOutput(nodes=[], edges=[]),
+        model_name=client.model,
         generated_at=datetime.now(timezone.utc),
     )
-    session.add(flow)
-    await session.commit()
-    return _to_out(flow)
 
 
 @router.post("/stream", dependencies=[Depends(require_permission("flowviz:read"))])
@@ -109,10 +157,9 @@ async def get_flow(flow_id: UUID, session: SessionDep):
     return _to_out(flow)
 
 
-async def _call_ai(request: Request, input_text: str, system_override: str | None) -> dict:
+async def _call_ai(client, input_text: str, system_override: str | None) -> dict:
     from tip_ai import OpenRouterMessage
 
-    client = request.app.state.ai_client
     system = system_override or DIRECT_FLOW_PROMPT
     # System prompt goes as a proper system message; input as user message
     messages = [

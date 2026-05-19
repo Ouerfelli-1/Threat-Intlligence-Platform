@@ -1,6 +1,10 @@
 import type { Metadata } from 'next';
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
+// ReactFlow ships its own stylesheet (handles, controls, minimap, edges).
+// Imported globally so any page that mounts <AttackFlowGraph> picks it up
+// without each page having to remember.
+import 'reactflow/dist/style.css';
 
 const inter = Inter({
   variable: '--font-inter',

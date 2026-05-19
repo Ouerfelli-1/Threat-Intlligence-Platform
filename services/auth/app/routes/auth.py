@@ -10,6 +10,9 @@ from sqlalchemy.orm import selectinload
 from app.db import get_session_factory
 from app.deps import get_current_user_payload
 from app.models import AuditLog, Session, ServiceAccount, User
+from app.settings import get_settings
+
+settings = get_settings()
 from app.schemas import (
     LoginRequest,
     MeOut,
@@ -155,12 +158,74 @@ async def service_login(body: ServiceLoginRequest, session: SessionDep):
 
 
 @router.get("/me", response_model=MeOut)
-async def me(payload: Annotated[dict, Depends(get_current_user_payload)]):
+async def me(
+    payload: Annotated[dict, Depends(get_current_user_payload)],
+    session: SessionDep,
+):
+    """Return CURRENT user state, not stale JWT claims.
+
+    The JWT carries role + perms baked in at login time. When an admin
+    demotes a user or revokes their sessions, the JWT is still valid by
+    signature for up to 1h. To make changes take effect immediately, /me:
+
+      1. Looks the user up in the DB by sub claim (not by JWT username).
+      2. Returns CURRENT role + effective permissions from the role table.
+      3. Returns 401 if user is inactive OR all their sessions are revoked
+         (admin force-logged-them-out). The frontend's api.ts handles 401
+         by clearing local auth and bouncing to /login — that's how a
+         demoted user actually gets kicked.
+
+    DISABLE_AUTH=true dev mode still works because get_current_user_payload
+    short-circuits to a synthetic dev admin payload upstream.
+    """
     sub = payload.get("sub", "")
-    user_id_str = sub.replace("user:", "") if sub.startswith("user:") else "00000000-0000-0000-0000-000000000000"
+    # Dev-mode short-circuit: when DISABLE_AUTH is on, payload.sub is the
+    # synthetic UUID. Don't try to look that up in the DB; return as-is.
+    if settings.disable_auth:
+        return MeOut(
+            id=uuid.UUID("00000000-0000-0000-0000-000000000000"),
+            username=payload.get("username", "dev"),
+            role=payload.get("role", "admin"),
+            permissions=payload.get("perms", ["*"]),
+        )
+
+    if not sub.startswith("user:"):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token is not a user token")
+    try:
+        user_id = uuid.UUID(sub.removeprefix("user:"))
+    except ValueError:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Token sub malformed") from None
+
+    # 1. Look up the user fresh + their role (single query, eager-load).
+    result = await session.execute(
+        select(User).options(selectinload(User.role)).where(User.id == user_id)
+    )
+    user = result.scalar_one_or_none()
+    if not user or not user.active:
+        # Either deleted or deactivated since the token was issued.
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Account is inactive or removed")
+
+    # 2. Check the user has at least one un-revoked session. If the admin
+    #    revoked everything, force a re-login.
+    from app.models import Session as _Session
+    from sqlalchemy import func as _func
+    active_sessions = await session.execute(
+        select(_func.count(_Session.id)).where(
+            _Session.user_id == user_id,
+            _Session.revoked == False,  # noqa: E712
+        )
+    )
+    if active_sessions.scalar_one() == 0:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Session was revoked")
+
+    # 3. Effective permissions = role.permissions + supplementary.
+    role_name = user.role.name if user.role else "unknown"
+    role_perms = list(user.role.permissions or []) if user.role else []
+    supp = list(user.supplementary_permissions or [])
+    effective = list(dict.fromkeys(role_perms + supp))
     return MeOut(
-        id=uuid.UUID(user_id_str),
-        username=payload.get("username", "dev"),
-        role=payload.get("role", "admin"),
-        permissions=payload.get("perms", ["*"]),
+        id=user.id,
+        username=user.username,
+        role=role_name,
+        permissions=effective,
     )

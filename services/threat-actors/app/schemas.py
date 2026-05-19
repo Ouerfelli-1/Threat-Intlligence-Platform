@@ -129,6 +129,10 @@ class AnalyzeRequest(BaseModel):
     actions: list[str] | None = None
     flowviz: bool = True
     model: str | None = None
+    # Cache-first: when a saved actor_insight already exists at the current
+    # PROMPT_VERSION, return it without re-running the AI. The "Re-analyze"
+    # button sets force=true to bypass.
+    force: bool = False
 
 
 class ActorCreateManual(BaseModel):

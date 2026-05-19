@@ -28,6 +28,14 @@ class FlowOutput(BaseModel):
 class FlowRequest(BaseModel):
     input: str
     system: str | None = None
+    # Optional per-request model override (LiteLLM-format, e.g. "github/gpt-4o").
+    # When set, flowviz spins up a one-off client with this model instead of
+    # using its global default. Threat-intel uses this to route attack-flow
+    # generation through the same smart-tier model that produced the hunting
+    # hypothesis, so all three pieces of the threat insight share a quota pool
+    # with enough headroom (gpt-4o-mini's free daily quota chokes on 4K-token
+    # attack flows).
+    model: str | None = None
 
 
 class FlowOut(BaseModel):

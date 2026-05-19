@@ -1,13 +1,16 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import useSWR from 'swr';
 import SortHeader from '@/components/shared/SortHeader';
 import FilterBar from '@/components/shared/FilterBar';
-import { Package, Crosshair, AlertTriangle, Layers, FileText, Plus, Download } from '@/components/icons';
+import InsightView, { type InsightEnvelope } from '@/components/shared/InsightView';
+import { Package, Crosshair, AlertTriangle, Layers, FileText, Plus, Download, Sparkles } from '@/components/icons';
 import { useThreats } from '@/lib/hooks';
 import type { Threat } from '@/lib/hooks';
 import { useSortable } from '@/lib/sort';
+import { api, fetcher } from '@/lib/api';
 import KPI from '@/components/shared/KPI';
 
 function fmtDate(iso: string | null): string {
@@ -43,6 +46,24 @@ function DetailPanel({ threat, onClose }: { threat: Threat; onClose: () => void 
   const ttps: string[] = det.ttps ?? det.techniques ?? [];
   const products: string[] = det.affected_products ?? det.products ?? [];
   const cves: string[] = det.cves ?? det.vulnerabilities ?? [];
+
+  // Same insight pipeline as the dedicated threat detail page — POST
+  // /threats/{id}/analyze produces a hunting hypothesis + IOC extraction
+  // + flowviz attack flow; results cache server-side at the current
+  // prompt_version so re-opening the drawer doesn't re-bill the AI.
+  const { data: insight, isLoading: insightLoading, mutate: mutateInsight } = useSWR<InsightEnvelope>(
+    threat.id ? `/threats/${threat.id}/insight` : null,
+    fetcher,
+    { revalidateOnFocus: false, errorRetryCount: 0 },
+  );
+  const [analyzing, setAnalyzing] = useState(false);
+  const handleAnalyze = useCallback(async (force = false) => {
+    setAnalyzing(true);
+    try {
+      await api.post(`/threats/${threat.id}/analyze`, force ? { force: true } : {});
+      mutateInsight();
+    } finally { setAnalyzing(false); }
+  }, [threat.id, mutateInsight]);
 
   return (
     <div
@@ -144,6 +165,39 @@ function DetailPanel({ threat, onClose }: { threat: Threat; onClose: () => void 
               </div>
             </div>
           )}
+
+          {/* AI insight — hunting hypothesis + IOC extraction + flowviz
+              attack flow. Same shape and component as the standalone
+              threat detail page. Cache-first by default; "Re-analyze"
+              forces a fresh run. */}
+          <div className="card">
+            <div className="card-h">
+              <Sparkles s={12} />
+              <div className="t">AI insight</div>
+              {insight && <div className="s">v{insight.prompt_version}</div>}
+            </div>
+            <div style={{ padding: 14 }}>
+              {insightLoading && (
+                <div style={{ textAlign: 'center', color: 'var(--text-4)', fontSize: 12 }}>Loading…</div>
+              )}
+              {!insightLoading && !insight && (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, padding: '8px 0' }}>
+                  <div style={{ fontSize: 12, color: 'var(--text-3)' }}>No AI insight yet</div>
+                  <button className="btn primary sm" onClick={() => handleAnalyze(false)} disabled={analyzing}>
+                    <Sparkles s={11} />{analyzing ? 'Analyzing...' : 'Generate insight'}
+                  </button>
+                </div>
+              )}
+              {!insightLoading && insight && (
+                <InsightView
+                  insight={insight}
+                  analyzing={analyzing}
+                  onReanalyze={() => handleAnalyze(true)}
+                  flowHeight={360}
+                />
+              )}
+            </div>
+          </div>
 
           {/* Source link */}
           {threat.source_url && (
@@ -263,15 +317,14 @@ export default function SupplyChainPage() {
               <th style={{ width: 90 }}>Severity</th>
               <th>Title</th>
               <th style={{ width: 140 }}>Source</th>
-              <th style={{ width: 70 }}>Confidence</th>
               <th style={{ width: 60 }}>Status</th>
             </tr></thead>
             <tbody>
               {isLoading && (
-                <tr><td colSpan={6} style={{ padding: 30, textAlign: 'center', color: 'var(--text-4)' }}>Loading supply chain threats…</td></tr>
+                <tr><td colSpan={5} style={{ padding: 30, textAlign: 'center', color: 'var(--text-4)' }}>Loading supply chain threats…</td></tr>
               )}
               {!isLoading && sorted.length === 0 && (
-                <tr><td colSpan={6} style={{ padding: 40, textAlign: 'center', color: 'var(--text-4)' }}>
+                <tr><td colSpan={5} style={{ padding: 40, textAlign: 'center', color: 'var(--text-4)' }}>
                   {q || severityFilter ? 'No threats match the current filters.' : 'No supply chain threats recorded yet. Run the threat-intel ingestion job.'}
                 </td></tr>
               )}
@@ -297,14 +350,6 @@ export default function SupplyChainPage() {
                     )}
                   </td>
                   <td style={{ fontSize: 11, color: 'var(--text-4)' }}>{t.source}</td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ flex: 1, height: 4, background: 'var(--border)', borderRadius: 2 }}>
-                        <div style={{ width: `${Math.round(t.confidence_score * 100)}%`, height: '100%', background: 'var(--accent)', borderRadius: 2 }} />
-                      </div>
-                      <span className="mono" style={{ fontSize: 10, color: 'var(--text-4)' }}>{Math.round(t.confidence_score * 100)}%</span>
-                    </div>
-                  </td>
                   <td>
                     <span className={`badge ${t.analyst_status === 'relevant' ? 'low' : t.analyst_status === 'not_relevant' ? 'mute' : t.analyst_status === 'escalated' ? 'high' : 'mute'}`}
                           style={{ fontSize: 9.5 }}>

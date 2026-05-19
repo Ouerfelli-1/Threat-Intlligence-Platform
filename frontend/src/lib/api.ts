@@ -17,13 +17,37 @@ class ApiError extends Error {
   }
 }
 
+// Single-flight redirect — if a /me poll, an SWR hook, and a manual call
+// all 401 at the same moment, we only redirect ONCE. Avoids the user
+// seeing "missing bearer token" toasts spam while the redirect happens.
+let redirecting = false;
+function redirectToLogin() {
+  if (redirecting) return;
+  redirecting = true;
+  try { useStore.getState().clearAuth(); } catch { /* SSR */ }
+  if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+    window.location.href = '/login';
+  }
+}
+
 async function request<T>(
   method: string,
   path: string,
   body?: unknown,
   opts?: { params?: Record<string, string | number | boolean | undefined> }
 ): Promise<T> {
+  // Block requests before zustand hydrates with a token. Without this we'd
+  // fire calls with no Authorization header on every first paint, get back
+  // a parade of 401s, and surface them as "missing bearer token" errors
+  // in the UI before the layout's redirect-on-no-token kicks in.
   const token = useStore.getState().token;
+  if (!token) {
+    redirectToLogin();
+    throw new ApiError(401, 'no-token');  // SWR will treat as error; the
+                                          // redirect already fired so the
+                                          // user lands on /login anyway.
+  }
+
   const url = new URL(`${BASE}${path}`, window.location.origin);
 
   if (opts?.params) {
@@ -36,10 +60,8 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
   };
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
 
   const res = await fetch(url.toString(), {
     method,
@@ -48,9 +70,10 @@ async function request<T>(
   });
 
   if (res.status === 401) {
-    useStore.getState().clearAuth();
-    window.location.href = '/login';
-    throw new ApiError(401, 'Unauthorized');
+    // Token expired / session revoked. Quietly clear + redirect; do NOT
+    // bubble the "missing bearer token" string into UI toasts.
+    redirectToLogin();
+    throw new ApiError(401, 'session-expired');
   }
 
   if (!res.ok) {

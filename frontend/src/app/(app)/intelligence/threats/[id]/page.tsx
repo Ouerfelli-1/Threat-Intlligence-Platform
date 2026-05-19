@@ -1,25 +1,20 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import Bar from '@/components/shared/Bar';
 import {
   ChevronLeft, More, Sparkles, Refresh, Pin, X,
   Check, AlertTriangle, Link as LinkIcon,
 } from '@/components/icons';
 import { useThreat } from '@/lib/hooks';
 import { api, fetcher } from '@/lib/api';
+import InsightView, { type InsightEnvelope } from '@/components/shared/InsightView';
 
 /* ── types ──────────────────────────────────────────────────────────────── */
 
-interface Insight {
-  payload: Record<string, unknown>;
-  analyst_override: Record<string, unknown> | null;
-  model_name: string;
-  prompt_version: string;
-  generated_at: string;
-}
+// Insight envelope reused via <InsightView> (shared with actor detail).
+type Insight = InsightEnvelope;
 
 interface Note {
   id: string;
@@ -113,12 +108,19 @@ export default function ThreatDetailPage() {
 
   /* ── actions ─────────────────────────────────────────────────────────── */
 
-  const handleAnalyze = useCallback(async () => {
+  // `force=false` (the default) is cheap — backend returns the cached
+  // insight without calling the AI if one exists at the current prompt
+  // version. Used by the "Generate insight" button on first view.
+  // `force=true` re-runs the whole pipeline (IOCs + hunt + flowviz) — the
+  // "Re-analyze" button at the bottom of the panel does that explicitly.
+  const handleAnalyze = useCallback(async (force = false) => {
     setAnalyzing(true);
     try {
-      await api.post(`/threats/${id}/analyze`);
-      setTimeout(() => { mutateInsight(); setAnalyzing(false); }, 3000);
-    } catch { setAnalyzing(false); }
+      await api.post(`/threats/${id}/analyze`, force ? { force: true } : {});
+      // Cached responses come back in <1s; fresh ones can take 60-90s.
+      // Either way the POST already returned, just remutate.
+      mutateInsight();
+    } finally { setAnalyzing(false); }
   }, [id, mutateInsight]);
 
   const handlePostNote = useCallback(async () => {
@@ -159,7 +161,6 @@ export default function ThreatDetailPage() {
     );
   }
 
-  const conf = threat.confidence_score ?? 0;
   const details = threat.details ?? {};
 
   return (
@@ -210,15 +211,9 @@ export default function ThreatDetailPage() {
           <span>Observed {fmtDate(threat.observed_at)}</span>
         </div>
 
-        {/* Metrics row */}
+        {/* Metrics row — Confidence column intentionally omitted (operator
+            dropped numeric confidence platform-wide). */}
         <div style={{ display: 'flex', gap: 10, marginBottom: 18 }}>
-          <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6 }}>
-            <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Confidence</div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div style={{ fontSize: 18, fontWeight: 600, color: conf > 0.85 ? 'var(--low)' : conf > 0.6 ? 'var(--med)' : 'var(--high)', fontFamily: 'var(--mono)' }}>{conf.toFixed(2)}</div>
-              <Bar value={conf} variant={conf > 0.85 ? 'low' : conf > 0.6 ? '' : 'high'} />
-            </div>
-          </div>
           <div style={{ flex: 1, padding: '10px 12px', background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6 }}>
             <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>Status</div>
             <span className={`badge ${statusBadgeClass(threat.analyst_status)}`}>{threat.analyst_status || 'unreviewed'}</span>
@@ -284,44 +279,17 @@ export default function ThreatDetailPage() {
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: 200, color: 'var(--text-4)', gap: 10 }}>
                   <Sparkles s={24} />
                   <div style={{ fontSize: 13 }}>No AI insight yet</div>
-                  <button className="btn sm" onClick={handleAnalyze} disabled={analyzing}>
+                  <button className="btn sm" onClick={() => handleAnalyze(false)} disabled={analyzing}>
                     <Refresh s={11} />{analyzing ? 'Analyzing...' : 'Generate insight'}
                   </button>
                 </div>
               )}
               {!insightLoading && insight && (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {insight.analyst_override && (
-                    <div style={{ padding: '8px 10px', background: 'rgba(210,153,34,0.08)', border: '1px solid rgba(210,153,34,0.25)', borderRadius: 6, fontSize: 12 }}>
-                      <div style={{ fontWeight: 600, color: '#d29922', marginBottom: 4 }}>Analyst Override</div>
-                      <pre style={{ fontSize: 11, color: 'var(--text-2)', margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'var(--mono)' }}>
-                        {JSON.stringify(insight.analyst_override, null, 2)}
-                      </pre>
-                    </div>
-                  )}
-                  {Object.entries(insight.payload).map(([key, val]) => (
-                    <div key={key} style={{ padding: '8px 10px', background: 'var(--bg-elev)', border: '1px solid var(--border)', borderRadius: 6 }}>
-                      <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 4 }}>{key.replace(/_/g, ' ')}</div>
-                      {typeof val === 'string' ? (
-                        <div style={{ fontSize: 12.5, color: 'var(--text-2)', lineHeight: 1.5 }}>{val}</div>
-                      ) : Array.isArray(val) ? (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                          {(val as unknown[]).map((v, i) => <span key={i} className="tag">{typeof v === 'string' ? v : JSON.stringify(v)}</span>)}
-                        </div>
-                      ) : (
-                        <pre style={{ fontSize: 11, color: 'var(--text-3)', margin: 0, whiteSpace: 'pre-wrap', fontFamily: 'var(--mono)' }}>{JSON.stringify(val, null, 2)}</pre>
-                      )}
-                    </div>
-                  ))}
-                  <div style={{ fontSize: 10, color: 'var(--text-4)', display: 'flex', gap: 10, marginTop: 4 }}>
-                    <span>Model: {insight.model_name}</span>
-                    <span>v{insight.prompt_version}</span>
-                    <span>{fmtDate(insight.generated_at)}</span>
-                  </div>
-                  <button className="btn sm" onClick={handleAnalyze} disabled={analyzing} style={{ alignSelf: 'flex-start' }}>
-                    <Refresh s={11} />{analyzing ? 'Re-analyzing...' : 'Re-analyze'}
-                  </button>
-                </div>
+                <InsightView
+                  insight={insight}
+                  analyzing={analyzing}
+                  onReanalyze={() => handleAnalyze(true)}
+                />
               )}
             </>
           )}
@@ -372,3 +340,8 @@ export default function ThreatDetailPage() {
     </div>
   );
 }
+
+
+// (ThreatInsightView moved to components/shared/InsightView.tsx — also
+// used by the actor detail page so both surfaces render the v2 insight
+// payload the same way.)

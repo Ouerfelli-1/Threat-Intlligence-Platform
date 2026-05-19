@@ -73,6 +73,10 @@ class AnalyzeRequest(BaseModel):
     actions: list[str] | None = None
     flowviz: bool = True
     model: str | None = None
+    # When the threat already has a saved insight row at the current
+    # PROMPT_VERSION, return it instead of re-running the AI. Set true to
+    # force a fresh generation (the "Re-analyze" button does this).
+    force: bool = False
 
 
 class ThreatCreateManual(BaseModel):

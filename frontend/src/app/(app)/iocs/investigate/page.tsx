@@ -127,7 +127,6 @@ function AIPanel({
   const ai = (inv.payload?.ai_result ?? {}) as Record<string, any>;
   const verdict = inv.verdict ?? ai.verdict ?? null;
   const riskScore = inv.risk_score ?? ai.risk_score ?? null;
-  const confidence = inv.confidence ?? ai.confidence ?? null;
   const summary = inv.summary ?? ai.summary ?? null;
   const ttps: string[] = Array.isArray(ai.ttps) ? ai.ttps : [];
   const actions: string[] = Array.isArray(ai.recommended_actions) ? ai.recommended_actions : [];
@@ -167,12 +166,6 @@ function AIPanel({
                   <div className="mono" style={{ fontSize: 20, fontWeight: 700, color: riskColor(riskScore) }}>
                     {riskScore}<span style={{ fontSize: 12, color: 'var(--text-4)' }}>/100</span>
                   </div>
-                </div>
-              )}
-              {confidence != null && (
-                <div>
-                  <div style={{ fontSize: 10, color: 'var(--text-4)', marginBottom: 3 }}>Confidence</div>
-                  <div className="mono" style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-2)' }}>{(confidence * 100).toFixed(0)}%</div>
                 </div>
               )}
               {inv.model_name && (
@@ -546,22 +539,31 @@ export default function InvestigatePage() {
                       </>
                     )}
 
-                    {effectiveAbuse && (
-                      <div style={{ marginTop: effectiveShodan ? 14 : 0 }}>
-                        <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>AbuseIPDB reputation</div>
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
-                          <span className="mono" style={{ fontSize: 22, fontWeight: 700, color: (effectiveAbuse.abuse_confidence_score ?? 0) >= 50 ? '#f85149' : (effectiveAbuse.abuse_confidence_score ?? 0) >= 20 ? '#d29922' : '#3fb950' }}>
-                            {effectiveAbuse.abuse_confidence_score ?? 0}
-                          </span>
-                          <span style={{ fontSize: 10, color: 'var(--text-4)' }}>/100 abuse-confidence</span>
+                    {effectiveAbuse && (() => {
+                      // Map AbuseIPDB's 0-100 score into a categorical
+                      // reputation label so we don't show the raw number
+                      // (numeric confidence metrics dropped platform-wide).
+                      const s = effectiveAbuse.abuse_confidence_score ?? 0;
+                      const cat = s >= 75 ? 'malicious'
+                                : s >= 25 ? 'suspicious'
+                                : 'clean';
+                      const catColor = cat === 'malicious' ? '#f85149'
+                                     : cat === 'suspicious' ? '#d29922'
+                                     : '#3fb950';
+                      return (
+                        <div style={{ marginTop: effectiveShodan ? 14 : 0 }}>
+                          <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 8 }}>AbuseIPDB reputation</div>
+                          <div style={{ marginBottom: 8 }}>
+                            <span style={{ fontSize: 15, fontWeight: 700, color: catColor, textTransform: 'capitalize' }}>{cat}</span>
+                          </div>
+                          <Row k="Reports (90 days)" v={effectiveAbuse.total_reports ?? '0'} />
+                          <Row k="Last report" v={effectiveAbuse.last_reported_at ? new Date(effectiveAbuse.last_reported_at).toLocaleDateString('en-GB') : null} />
+                          <Row k="Usage type" v={effectiveAbuse.usage_type} />
+                          {effectiveAbuse.is_tor && <Row k="Tor exit node" v="yes" />}
+                          {effectiveAbuse.is_whitelisted && <Row k="Whitelisted" v="yes" />}
                         </div>
-                        <Row k="Reports (90 days)" v={effectiveAbuse.total_reports ?? '0'} />
-                        <Row k="Last report" v={effectiveAbuse.last_reported_at ? new Date(effectiveAbuse.last_reported_at).toLocaleDateString('en-GB') : null} />
-                        <Row k="Usage type" v={effectiveAbuse.usage_type} />
-                        {effectiveAbuse.is_tor && <Row k="Tor exit node" v="yes" />}
-                        {effectiveAbuse.is_whitelisted && <Row k="Whitelisted" v="yes" />}
-                      </div>
-                    )}
+                      );
+                    })()}
                   </div>
                 )}
               </div>
@@ -593,18 +595,16 @@ export default function InvestigatePage() {
               const malwareFamilies = [...new Set((ind.sources ?? []).map((s: any) => s.malware_family).filter(Boolean))] as string[];
               const threatTypes     = [...new Set((ind.sources ?? []).map((s: any) => s.threat_type).filter(Boolean))] as string[];
               const sourceNames     = [...new Set((ind.sources ?? []).map((s: any) => s.source_name))] as string[];
-              const conf: number = ind.confidence_score ?? 0;
               return (
                 <Sec key={ind.id} icon={Crosshair} title="Threat intelligence library" danger badge="FOUND IN DATABASE">
                   <div style={{ padding: '12px 16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                     <div>
-                      <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Confidence score</div>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginBottom: 6 }}>
-                        <span className="mono" style={{ fontSize: 28, fontWeight: 700, color: conf >= 0.8 ? '#f85149' : conf >= 0.6 ? '#d29922' : '#58a6ff' }}>{conf.toFixed(2)}</span>
-                        <span style={{ fontSize: 11, color: 'var(--text-4)' }}>/1.00</span>
+                      <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Status</div>
+                      <div style={{ marginBottom: 8 }}>
+                        <span style={{ fontSize: 15, fontWeight: 600, color: '#f85149' }}>Known malicious</span>
+                        <span style={{ fontSize: 11, color: 'var(--text-4)', marginLeft: 8 }}>· {sourceNames.length} source{sourceNames.length === 1 ? '' : 's'}</span>
                       </div>
-                      <Bar value={conf} variant={conf >= 0.8 ? 'crit' : conf >= 0.6 ? 'high' : 'med'} />
-                      <div style={{ marginTop: 10, fontSize: 11, color: 'var(--text-4)' }}>
+                      <div style={{ fontSize: 11, color: 'var(--text-4)' }}>
                         First seen: <span className="mono" style={{ color: 'var(--text-3)' }}>{fmtDate(ind.first_seen)}</span><br />
                         Last seen: <span className="mono" style={{ color: 'var(--text-3)' }}>{fmtDate(ind.last_seen)}</span>
                       </div>

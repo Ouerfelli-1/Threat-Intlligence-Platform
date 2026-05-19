@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from tip_ai import build_ai_client
 from tip_auth import JWTAuthMiddleware
 from tip_cache import Cache
 from tip_common import build_notes_router, create_service_app, wire_auth
@@ -37,6 +38,34 @@ async def _startup(app: FastAPI) -> None:
         app.state.hibp_api_key = await secrets.get_optional("HIBP_API_KEY")
     except Exception:
         app.state.hibp_api_key = None
+
+    # Pull the LiteLLM proxy key + provider keys so threat-intel can run its
+    # own AI passes (hunting-hypothesis + IOC extraction) instead of trampolining
+    # through the orchestrator action queue. Same shape as vuln-intel.
+    ai_secrets: dict[str, str] = {}
+    for k in (
+        "LITELLM_MASTER_KEY",
+        "OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "GROQ_API_KEY", "GEMINI_API_KEY", "MISTRAL_API_KEY",
+        "COHERE_API_KEY", "TOGETHER_API_KEY", "DEEPSEEK_API_KEY",
+        "GITHUB_API_KEY",
+    ):
+        try:
+            ai_secrets[k] = await secrets.get(k)
+        except Exception:
+            ai_secrets[k] = ""
+    # Allow runtime override of primary/fallback models without redeploy
+    primary_override = await secrets.get_optional("AI_PRIMARY_MODEL")
+    if primary_override:
+        settings.ai_primary_model = primary_override
+    fallbacks_override = await secrets.get_optional("AI_FALLBACK_MODELS")
+    if fallbacks_override is not None:
+        settings.ai_fallback_models = fallbacks_override
+    app.state.ai_client = build_ai_client(ai_secrets, settings)
+    # Stash the secret bag so we can build a smarter-model client per request
+    # (threat insight uses gpt-4o-class for richer hunting hypotheses).
+    app.state.ai_secrets = ai_secrets
+
     await wire_auth(app, settings, settings.service_name)
     jwt = getattr(app.state, "service_jwt", None)
     if jwt:
@@ -50,6 +79,12 @@ async def _shutdown(app: FastAPI) -> None:
     secrets: SecretsClient | None = getattr(app.state, "secrets", None)
     if secrets is not None:
         await secrets.close()
+    ai_client = getattr(app.state, "ai_client", None)
+    if ai_client is not None:
+        try:
+            await ai_client.close()
+        except Exception:
+            pass
     await close_engine()
 
 

@@ -1,8 +1,10 @@
 from fastapi import FastAPI
 
+from tip_ai import build_ai_client
 from tip_auth import JWTAuthMiddleware
 from tip_cache import Cache
 from tip_common import build_notes_router, create_service_app, wire_auth
+from tip_secrets import SecretsClient
 from tip_source_health import SourceHealthRepository
 
 from app.db import close_engine, get_session, get_session_factory, init_engine
@@ -25,13 +27,47 @@ async def _startup(app: FastAPI) -> None:
         session_factory=session_factory,
         cache=cache,
     )
+
+    # Build the AI client so /actors/{id}/analyze can run hunting hypothesis
+    # + IOC extraction directly (matches threat-intel pattern).
+    secrets = SecretsClient(
+        base_url=settings.secrets_url,
+        service_name=settings.service_name,
+        bootstrap_token=settings.secrets_bootstrap_token,
+    )
+    app.state.secrets = secrets
+    ai_secrets: dict[str, str] = {}
+    for k in (
+        "LITELLM_MASTER_KEY",
+        "OPENROUTER_API_KEY", "OPENAI_API_KEY", "ANTHROPIC_API_KEY",
+        "GROQ_API_KEY", "GEMINI_API_KEY", "MISTRAL_API_KEY",
+        "COHERE_API_KEY", "TOGETHER_API_KEY", "DEEPSEEK_API_KEY",
+        "GITHUB_API_KEY",
+    ):
+        try:
+            ai_secrets[k] = await secrets.get(k)
+        except Exception:
+            ai_secrets[k] = ""
+    app.state.ai_client = build_ai_client(ai_secrets, settings)
+    app.state.settings = settings
+    app.state.ai_secrets = ai_secrets
+
     await wire_auth(app, settings, settings.service_name)
+    jwt = getattr(app.state, "service_jwt", None)
+    if jwt:
+        secrets.set_service_jwt(jwt)
 
 
 async def _shutdown(app: FastAPI) -> None:
     cache: Cache | None = getattr(app.state, "cache", None)
     if cache is not None:
         await cache.close()
+    secrets: SecretsClient | None = getattr(app.state, "secrets", None)
+    if secrets is not None:
+        await secrets.close()
+    ai_client = getattr(app.state, "ai_client", None)
+    if ai_client is not None:
+        await ai_client.close()
     await close_engine()
 
 

@@ -19,17 +19,24 @@
   --text-4: #6e7681;
   --text-mute: #484f58;
 
-  --accent: #58a6ff;
-  --accent-2: #79c0ff;
-  --accent-bg: rgba(88,166,255,0.10);
-  --accent-bg-2: rgba(88,166,255,0.18);
+  /* Accent moved from electric blue (#58a6ff) to teal-cyan. The blue
+     palette was clashing with severity-medium which also rendered blue,
+     and the dashboard now reads more like a security ops tool than a
+     dev-tools clone. Severity-medium remapped to amber-leaning so we
+     never share a colour between "accent" and a severity tier.
+     RGB triples kept inline so rgba(...) calls in component code can
+     stay as literals without breaking diffs. */
+  --accent: #2dd4bf;            /* teal-400 */
+  --accent-2: #5eead4;          /* teal-300 */
+  --accent-bg: rgba(45,212,191,0.10);
+  --accent-bg-2: rgba(45,212,191,0.18);
 
   --crit: #f85149;
   --crit-bg: rgba(248,81,73,0.12);
   --high: #d29922;
   --high-bg: rgba(210,153,34,0.12);
-  --med: #58a6ff;
-  --med-bg: rgba(88,166,255,0.12);
+  --med: #e8a33a;               /* warm amber instead of clashing blue */
+  --med-bg: rgba(232,163,58,0.12);
   --low: #3fb950;
   --low-bg: rgba(63,185,80,0.12);
   --info: #a371f7;
@@ -104,7 +111,7 @@ html, body, #__next {
   transition: background 0.15s, color 0.15s;
 }
 .sb-item:hover { background: var(--bg-elev); color: var(--text); }
-.sb-item.active { background: rgba(88,166,255,0.10); color: var(--text); }
+.sb-item.active { background: rgba(45,212,191,0.10); color: var(--text); }
 .sb-item.active::before { content: ''; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 2px; background: var(--accent); border-radius: 0 2px 2px 0; }
 .sb-item .ico { width: 14px; height: 14px; flex: none; color: var(--text-3); }
 .sb-item.active .ico { color: var(--accent); }
@@ -146,7 +153,7 @@ html, body, #__next {
 .badge { display: inline-flex; align-items: center; gap: 5px; padding: 1px 7px; border-radius: 10px; font-size: 10.5px; font-weight: 500; line-height: 1.5; border: 1px solid transparent; font-family: var(--sans); }
 .badge.crit { background: var(--crit-bg); color: var(--crit); border-color: rgba(248,81,73,0.3); }
 .badge.high { background: var(--high-bg); color: var(--high); border-color: rgba(210,153,34,0.3); }
-.badge.med  { background: var(--med-bg); color: var(--med); border-color: rgba(88,166,255,0.3); }
+.badge.med  { background: var(--med-bg); color: var(--med); border-color: rgba(45,212,191,0.3); }
 .badge.low  { background: var(--low-bg); color: var(--low); border-color: rgba(63,185,80,0.3); }
 .badge.info { background: var(--info-bg); color: var(--info); border-color: rgba(163,113,247,0.3); }
 .badge.mute { background: var(--bg-elev); color: var(--text-3); border-color: var(--border); }
@@ -167,7 +174,7 @@ html, body, #__next {
 
 /* Inputs */
 .input { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--r-md); padding: 5px 10px; color: var(--text); font-size: 12px; height: 28px; font-family: var(--sans); width: 100%; }
-.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(88,166,255,0.15); }
+.input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,212,191,0.15); }
 .input::placeholder { color: var(--text-4); }
 .select { background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--r-md); padding: 5px 8px; color: var(--text); font-size: 12px; height: 28px; }
 
@@ -175,7 +182,7 @@ html, body, #__next {
 .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
 .tbl thead th { text-align: left; font-weight: 500; font-size: 11px; color: var(--text-4); padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--bg-elev); letter-spacing: 0.02em; text-transform: uppercase; }
 .tbl tbody td { padding: 9px 12px; border-bottom: 1px solid var(--border-soft); color: var(--text-2); vertical-align: middle; }
-.tbl tbody tr:hover td { background: rgba(88,166,255,0.04); }
+.tbl tbody tr:hover td { background: rgba(45,212,191,0.04); }
 .tbl tbody tr:last-child td { border-bottom: none; }
 .tbl .c-num { font-family: var(--mono); color: var(--text); }
 .tbl .primary { color: var(--text); font-weight: 500; }
@@ -206,19 +213,19 @@ html, body, #__next {
 .grid-bg {
   background-color: #010409;
   background-image:
-    linear-gradient(rgba(88,166,255,0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(88,166,255,0.06) 1px, transparent 1px);
+    linear-gradient(rgba(45,212,191,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(45,212,191,0.06) 1px, transparent 1px);
   background-size: 48px 48px;
   position: relative;
   overflow: hidden;
 }
 .grid-bg::before {
   content: ''; position: absolute; inset: 0;
-  background: radial-gradient(ellipse at 50% 40%, rgba(88,166,255,0.18), transparent 55%);
+  background: radial-gradient(ellipse at 50% 40%, rgba(45,212,191,0.18), transparent 55%);
 }
 .scan {
   position: absolute; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(88,166,255,0.45), transparent);
+  background: linear-gradient(90deg, transparent, rgba(45,212,191,0.45), transparent);
   animation: scan 6s linear infinite;
 }
 @keyframes scan { 0% { top: -2%; } 100% { top: 102%; } }
@@ -247,7 +254,7 @@ html, body, #__next {
 
 /* TTP matrix cell */
 .ttp { font-size: 10.5px; padding: 4px 6px; border-radius: 3px; background: var(--bg-elev); color: var(--text-3); border: 1px solid var(--border-soft); cursor: default; font-family: var(--mono); }
-.ttp.l1 { background: rgba(88,166,255,0.12); color: #79c0ff; border-color: rgba(88,166,255,0.25); }
+.ttp.l1 { background: rgba(232,163,58,0.12); color: #79c0ff; border-color: rgba(232,163,58,0.25); }
 .ttp.l2 { background: rgba(210,153,34,0.18); color: #f0b736; border-color: rgba(210,153,34,0.35); }
 .ttp.l3 { background: rgba(248,81,73,0.22); color: #ff6961; border-color: rgba(248,81,73,0.4); }
 
@@ -295,4 +302,4 @@ html, body, #__next {
   cursor: pointer; border: 1px solid transparent;
 }
 .pagination .pg:hover { background: var(--bg-elev); color: var(--text); }
-.pagination .pg.active { background: var(--accent-bg); color: var(--accent); border-color: rgba(88,166,255,0.3); }
+.pagination .pg.active { background: var(--accent-bg); color: var(--accent); border-color: rgba(45,212,191,0.3); }
