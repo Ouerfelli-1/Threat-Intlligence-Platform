@@ -30,6 +30,11 @@ function redirectToLogin() {
   }
 }
 
+// Pre-auth paths — these must be callable WITHOUT a token (otherwise the
+// login form itself can't reach the auth service and the user gets a
+// redirect-to-login loop).
+const PRE_AUTH_PATHS = new Set(['/login', '/refresh']);
+
 async function request<T>(
   method: string,
   path: string,
@@ -40,8 +45,11 @@ async function request<T>(
   // fire calls with no Authorization header on every first paint, get back
   // a parade of 401s, and surface them as "missing bearer token" errors
   // in the UI before the layout's redirect-on-no-token kicks in.
+  // Skip the check for login/refresh — those endpoints ARE the way you
+  // get a token in the first place.
   const token = useStore.getState().token;
-  if (!token) {
+  const isPreAuth = PRE_AUTH_PATHS.has(path);
+  if (!token && !isPreAuth) {
     redirectToLogin();
     throw new ApiError(401, 'no-token');  // SWR will treat as error; the
                                           // redirect already fired so the
@@ -60,8 +68,10 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
   };
+  // Only attach bearer when we have one (pre-auth paths legitimately have
+  // no token; login won't accept one either).
+  if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(url.toString(), {
     method,
