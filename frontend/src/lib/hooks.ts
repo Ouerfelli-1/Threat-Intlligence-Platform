@@ -346,6 +346,10 @@ export interface DashboardData {
   top_actors: { id: string; name: string; origin_country: string | null; likelihood: number; target_sectors: string[]; motivation: string[] }[];
   recent_runs: RunInfo[];
   latest_brief: Report | null;
+  // Latest geo_prediction report (orchestrator /analyze/geo cycle).
+  // Payload: { outlook, summary, emerging_threats, affected_sectors,
+  //            recommended_monitoring }.
+  latest_geo: Report | null;
 }
 
 export const useDashboard = () => useOne<DashboardData>('/dashboard');

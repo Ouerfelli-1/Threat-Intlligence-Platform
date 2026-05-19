@@ -7,7 +7,7 @@ import Flag from '@/components/shared/Flag';
 import StatusDot from '@/components/shared/StatusDot';
 import {
   Sparkles, Users, Clock, FileText,
-  Refresh, Download, Skull, Shield, Layers,
+  Refresh, Download, Skull, Shield, Layers, Globe,
 } from '@/components/icons';
 import { useDashboard, useRansomwareVictims, useCVEs, useList } from '@/lib/hooks';
 import { useStore } from '@/lib/store';
@@ -97,6 +97,26 @@ export default function DashboardPage() {
       text: String(obj.t ?? obj.text ?? ''),
     };
   });
+
+  // Geopolitical outlook (orchestrator /analyze/geo). Same envelope shape
+  // as the brief — payload sits either at .payload or .payload.outlook.
+  // Mirrors briefSection's nest-or-flat heuristic for forward-compat.
+  type GeoSection = {
+    outlook?: string;          // "escalating" | "stable" | "de-escalating"
+    summary?: string;
+    emerging_threats?: { threat?: string; probability?: string; timeframe?: string }[];
+    affected_sectors?: string[];
+    recommended_monitoring?: string[];
+  };
+  type GeoPayload = GeoSection & { geo?: GeoSection };
+  const geoPayload = (data?.latest_geo?.payload ?? {}) as GeoPayload;
+  const geoSection: GeoSection = geoPayload.geo ?? geoPayload;
+  const geoOutlook = geoSection?.outlook;
+  const geoOutlookCls =
+    geoOutlook === 'escalating'    ? 'crit' :
+    geoOutlook === 'de-escalating' ? 'low'  :
+    geoOutlook === 'stable'        ? 'med'  : 'mute';
+  const geoEmerging = (geoSection?.emerging_threats ?? []).slice(0, 4);
 
   const handleRerunAI = useCallback(async () => {
     try { await api.post('/analyze'); } catch { /* 202 is expected */ }
@@ -264,6 +284,85 @@ export default function DashboardPage() {
 
         {/* RIGHT */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          {/* Geopolitical insights — top-right, mirrors the briefing's
+              prominence. Backed by orchestrator's /analyze/geo (daily
+              scheduled job). Falls back to a stub when no run exists. */}
+          <div className="card">
+            <div className="card-h">
+              <Globe s={13} />
+              <div className="t">Geopolitical insights</div>
+              <div className="s">
+                {data?.latest_geo
+                  ? `updated ${howLongAgo(data.latest_geo.generated_at)}`
+                  : 'no outlook yet'}
+              </div>
+              <div className="right">
+                {geoOutlook
+                  ? <span className={`badge ${geoOutlookCls}`}><span className="dot" />{geoOutlook.toUpperCase()}</span>
+                  : null}
+              </div>
+            </div>
+            <div className="card-b">
+              {!data?.latest_geo && (
+                <div style={{ fontSize: 12.5, color: 'var(--text-3)' }}>
+                  No geopolitical outlook yet. Trigger
+                  {' '}<a href="/operations/scheduler" style={{ color: 'var(--accent)' }}>geo_prediction</a>
+                  {' '}from the scheduler or wait for the daily 05:00 run.
+                </div>
+              )}
+              {geoSection?.summary && (
+                <div style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.55, marginBottom: geoEmerging.length ? 12 : 0 }}>
+                  {geoSection.summary}
+                </div>
+              )}
+              {geoEmerging.length > 0 && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>
+                    Emerging threats (30-day)
+                  </div>
+                  {geoEmerging.map((t, i) => {
+                    const probCls = t.probability === 'high' ? 'crit' : t.probability === 'medium' ? 'high' : 'med';
+                    return (
+                      <div key={i} style={{ padding: '8px 10px', background: 'var(--bg-elev)', borderRadius: 6, border: '1px solid var(--border-soft)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                          {t.probability && <span className={`badge ${probCls}`} style={{ fontSize: 9 }}>{t.probability}</span>}
+                          {t.timeframe && <span className="mono" style={{ fontSize: 10, color: 'var(--text-4)' }}>{t.timeframe}</span>}
+                        </div>
+                        <div style={{ fontSize: 12, color: 'var(--text-2)', lineHeight: 1.45 }}>
+                          {t.threat}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              {(geoSection?.affected_sectors?.length ?? 0) > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
+                    Affected sectors
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {(geoSection.affected_sectors ?? []).map(s => (
+                      <span key={s} className="tag">{s}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {(geoSection?.recommended_monitoring?.length ?? 0) > 0 && (
+                <div style={{ marginTop: 12 }}>
+                  <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 4 }}>
+                    Watch list
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {(geoSection.recommended_monitoring ?? []).map(m => (
+                      <span key={m} className="tag mono" style={{ fontSize: 10.5 }}>{m}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Exploited in the Wild (CISA KEV) — promoted to top-right */}
           <div className="card">
             <div className="card-h">

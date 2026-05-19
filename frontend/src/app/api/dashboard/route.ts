@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
 
   // Run everything in parallel
   const [
-    articles, cves, threats, iocs, actors, runs, briefs, topCVEs, topActors, ...healths
+    articles, cves, threats, iocs, actors, runs, briefs, topCVEs, topActors, geo, ...healths
   ] = await Promise.all([
     safeFetch(`${NEWS_URL}/articles?limit=1`,        headers, 'articles'),
     safeFetch(`${VULN_URL}/cves?limit=1`,            headers, 'cves'),
@@ -60,6 +60,7 @@ export async function GET(req: NextRequest) {
     safeFetch(`${ORCH_URL}/reports?kind=analysis_cycle&limit=1`, headers, 'briefs'),
     safeFetch(`${ORCH_URL}/relevance/cves?limit=5`,  headers, 'top-cves'),
     safeFetch(`${ORCH_URL}/relevance/actors?limit=5`,headers, 'top-actors'),
+    safeFetch(`${ORCH_URL}/reports?kind=geo_prediction&limit=1`, headers, 'geo'),
     ...ALL_SERVICES.map(s => safeFetch(`${s.url}/health`, {}, `health-${s.name}`)),
   ]);
 
@@ -113,5 +114,10 @@ export async function GET(req: NextRequest) {
     })(),
     recent_runs: items(runs).slice(0, 10),
     latest_brief: items(briefs)[0] ?? null,
+    // Geopolitical outlook (orchestrator runs this daily via /analyze/geo).
+    // Payload shape from GEO_PREDICTION_PROMPT: outlook, summary,
+    // emerging_threats[{threat,probability,timeframe}], affected_sectors[],
+    // recommended_monitoring[]. May be null if the daily job hasn't run yet.
+    latest_geo: items(geo)[0] ?? null,
   });
 }
