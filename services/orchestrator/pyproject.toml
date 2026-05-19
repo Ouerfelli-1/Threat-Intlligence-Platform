@@ -16,6 +16,8 @@ dependencies = [
     "tip-schemas @ file:///app/packages/tip_schemas",
     "tip-ai @ file:///app/packages/tip_ai",
     "tip-secrets @ file:///app/packages/tip_secrets",
+    # Async SMTP for the notifications subsystem (email channel).
+    "aiosmtplib>=3.0",
 ]
 
 [tool.setuptools.packages.find]

@@ -60,6 +60,7 @@ const SERVICE_MAP: Record<string, string> = {
   // Orchestrator
   actions:        process.env.API_ORCHESTRATOR_URL  || 'http://orchestrator:8014',
   policies:       process.env.API_ORCHESTRATOR_URL  || 'http://orchestrator:8014',
+  notifications:  process.env.API_ORCHESTRATOR_URL  || 'http://orchestrator:8014',
   analyze:        process.env.API_ORCHESTRATOR_URL  || 'http://orchestrator:8014',
   reports:        process.env.API_ORCHESTRATOR_URL  || 'http://orchestrator:8014',
   relevance:      process.env.API_ORCHESTRATOR_URL  || 'http://orchestrator:8014',

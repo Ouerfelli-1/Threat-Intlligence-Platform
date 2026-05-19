@@ -9,7 +9,8 @@ from tip_source_health import SourceHealthRepository
 
 from app.db import close_engine, get_session_factory, init_engine
 from app.models import SourceHealth
-from app.routes import actions, analyze, health, policies
+from app.notify import SMTPConfig
+from app.routes import actions, analyze, health, notifications, policies
 from app.settings import get_settings
 
 settings = get_settings()
@@ -51,6 +52,22 @@ async def _startup(app: FastAPI) -> None:
     if fallbacks_override is not None:
         settings.ai_fallback_models = fallbacks_override
 
+    # SMTP config for the notification subsystem. Stored in the secrets
+    # vault so operators can rotate creds via the Settings UI without an
+    # env-var change. Missing creds = notifications gracefully skip with
+    # status="skipped" in the dispatch log; no startup crash.
+    smtp_host    = await secrets.get_optional("SMTP_HOST") or ""
+    smtp_port    = int(await secrets.get_optional("SMTP_PORT") or "587")
+    smtp_user    = await secrets.get_optional("SMTP_USER") or ""
+    smtp_pass    = await secrets.get_optional("SMTP_PASS") or ""
+    smtp_from    = await secrets.get_optional("SMTP_FROM") or smtp_user
+    smtp_use_tls = (await secrets.get_optional("SMTP_USE_TLS") or "true").lower() == "true"
+    smtp_starttls= (await secrets.get_optional("SMTP_STARTTLS") or "true").lower() == "true"
+    app.state.smtp_config = SMTPConfig(
+        host=smtp_host, port=smtp_port, user=smtp_user, password=smtp_pass,
+        from_addr=smtp_from, use_tls=smtp_use_tls, start_tls=smtp_starttls,
+    )
+
     await secrets.close()
     app.state.ai_client = build_ai_client(ai_secrets, settings)
 
@@ -87,4 +104,6 @@ app.add_middleware(
 app.include_router(analyze.router)
 app.include_router(policies.router)
 app.include_router(actions.router)
+app.include_router(notifications.router)
+app.include_router(notifications.internal_router)
 app.include_router(health.router)

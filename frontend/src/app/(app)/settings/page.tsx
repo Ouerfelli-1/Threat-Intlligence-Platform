@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { fetcher, api } from '@/lib/api';
 import {
   Refresh, Plus, X, Play, Check, AlertTriangle, ExternalLink, Trash,
-  Settings as SettingsIcon, Crosshair,
+  Settings as SettingsIcon, Crosshair, MessageSquare,
 } from '@/components/icons';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -44,12 +44,13 @@ const TAG_COLORS = ['#58a6ff', '#3fb950', '#d29922', '#f85149', '#a371f7', '#f08
 /* Page                                                                        */
 /* --------------------------------------------------------------------------- */
 
-type TabKey = 'feeds' | 'tags' | 'ai';
+type TabKey = 'feeds' | 'tags' | 'ai' | 'notifications';
 
 const TAB_LABELS: Record<TabKey, string> = {
-  feeds: 'RSS Feeds',
-  tags:  'Tag catalog',
-  ai:    'AI providers',
+  feeds:         'RSS Feeds',
+  tags:          'Tag catalog',
+  ai:            'AI providers',
+  notifications: 'Notifications',
 };
 
 export default function SettingsPage() {
@@ -88,7 +89,327 @@ export default function SettingsPage() {
         {tab === 'ai' && <AIProvidersTab />}
         {tab === 'feeds' && <FeedsTab />}
         {tab === 'tags'  && <TagsTab />}
+        {tab === 'notifications' && <NotificationsTab />}
       </div>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------------------- */
+/* Notifications tab                                                           */
+/* --------------------------------------------------------------------------- */
+
+interface NotificationRule {
+  id: string;
+  name: string;
+  event_type: string;
+  channel: string;
+  target: string;
+  filter: Record<string, unknown>;
+  active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+interface NotificationDispatch {
+  id: string;
+  rule_id: string | null;
+  event_type: string;
+  event_ref: string | null;
+  channel: string;
+  target: string;
+  status: string;
+  error: string | null;
+  payload: Record<string, unknown>;
+  sent_at: string;
+}
+
+const EVENT_TYPES = [
+  { value: 'domainwatch.change',  label: 'Domain change (DNS / content / cert)' },
+  { value: 'cve.exploited',       label: 'CVE exploited in the wild (CISA KEV)' },
+  { value: 'threat.supply_chain', label: 'New supply-chain attack detected' },
+] as const;
+
+function NotificationsTab() {
+  const { data: rules, mutate: mutRules } = useSWR<NotificationRule[]>(
+    '/notifications/rules', fetcher, { revalidateOnFocus: false });
+  const { data: dispatches } = useSWR<NotificationDispatch[]>(
+    '/notifications/dispatches?limit=20', fetcher, { refreshInterval: 30_000 });
+
+  const [showNew, setShowNew] = useState(false);
+  const [form, setForm] = useState({
+    name:       '',
+    event_type: 'domainwatch.change',
+    target:     '',
+    severity_min: '',     // optional severity floor for cve.exploited
+    product_match: false, // only fire if product is in CMDB profile
+  });
+  const [saving, setSaving] = useState(false);
+  const [createErr, setCreateErr] = useState<string | null>(null);
+
+  const [testTo, setTestTo] = useState('');
+  const [testEvt, setTestEvt] = useState<string>('domainwatch.change');
+  const [testing, setTesting] = useState(false);
+  const [testMsg, setTestMsg] = useState<{ ok: boolean; msg: string } | null>(null);
+
+  const createRule = useCallback(async () => {
+    setSaving(true); setCreateErr(null);
+    try {
+      const filter: Record<string, unknown> = {};
+      if (form.severity_min)  filter.severity_min  = form.severity_min;
+      if (form.product_match) filter.product_match = true;
+      await api.post('/notifications/rules', {
+        name: form.name.trim() || `${form.event_type} -> ${form.target}`,
+        event_type: form.event_type,
+        channel: 'smtp',
+        target: form.target.trim(),
+        filter,
+        active: true,
+      });
+      setShowNew(false);
+      setForm({ name: '', event_type: 'domainwatch.change', target: '', severity_min: '', product_match: false });
+      mutRules();
+    } catch (e) {
+      setCreateErr(String(e));
+    } finally {
+      setSaving(false);
+    }
+  }, [form, mutRules]);
+
+  const toggleRule = useCallback(async (r: NotificationRule) => {
+    await api.patch(`/notifications/rules/${r.id}`, { active: !r.active });
+    mutRules();
+  }, [mutRules]);
+
+  const removeRule = useCallback(async (r: NotificationRule) => {
+    if (!confirm(`Delete rule "${r.name}"?`)) return;
+    await api.delete(`/notifications/rules/${r.id}`);
+    mutRules();
+  }, [mutRules]);
+
+  const sendTest = useCallback(async () => {
+    if (!testTo.trim()) return;
+    setTesting(true); setTestMsg(null);
+    try {
+      const res = await api.post<{ sent?: number; failed?: number; error?: string | null }>(
+        '/notifications/test',
+        { event_type: testEvt, target: testTo.trim() },
+      );
+      if (res.sent) setTestMsg({ ok: true, msg: `Sent to ${testTo} (check inbox)` });
+      else          setTestMsg({ ok: false, msg: res.error || 'Send failed' });
+    } catch (e) {
+      setTestMsg({ ok: false, msg: String(e) });
+    } finally {
+      setTesting(false);
+    }
+  }, [testTo, testEvt]);
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <MessageSquare s={14} />
+        <div style={{ fontSize: 13.5, color: 'var(--text-2)' }}>
+          Email alerts for platform events. Configure SMTP credentials in the Secrets vault
+          (<span className="mono">SMTP_HOST</span>, <span className="mono">SMTP_PORT</span>,
+          <span className="mono"> SMTP_USER</span>, <span className="mono">SMTP_PASS</span>,
+          <span className="mono"> SMTP_FROM</span>) then add rules below.
+        </div>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>
+          <button className="btn primary sm" onClick={() => setShowNew(true)}>
+            <Plus s={12} /> New rule
+          </button>
+        </div>
+      </div>
+
+      {/* Send-test card */}
+      <div className="card" style={{ padding: 14 }}>
+        <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
+          Send test email
+        </div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select className="select" value={testEvt} onChange={(e) => setTestEvt(e.target.value)}>
+            {EVENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+          <input className="input" placeholder="you@example.com"
+                 value={testTo} onChange={(e) => setTestTo(e.target.value)}
+                 style={{ flex: 1, minWidth: 200 }} />
+          <button className="btn primary sm" onClick={sendTest} disabled={testing || !testTo.trim()}>
+            {testing ? <><Refresh s={11} /> Sending…</> : <><Play s={11} /> Send test</>}
+          </button>
+        </div>
+        {testMsg && (
+          <div style={{
+            marginTop: 10, padding: '6px 10px',
+            background: testMsg.ok ? 'rgba(63,185,80,0.08)' : 'rgba(248,81,73,0.08)',
+            border: testMsg.ok ? '1px solid rgba(63,185,80,0.3)' : '1px solid rgba(248,81,73,0.3)',
+            color: testMsg.ok ? '#3fb950' : '#f85149',
+            borderRadius: 4, fontSize: 12,
+          }}>
+            {testMsg.ok ? <Check s={10} /> : <AlertTriangle s={10} />} {testMsg.msg}
+          </div>
+        )}
+      </div>
+
+      {/* Rules table */}
+      <div className="card">
+        <div className="card-h"><MessageSquare s={13} />
+          <div className="t">Active rules</div>
+          <div className="s">{rules?.length ?? 0}</div>
+        </div>
+        <div className="card-b flush" style={{ overflow: 'auto' }}>
+          {!rules && <div style={{ padding: 14, fontSize: 12, color: 'var(--text-4)' }}>Loading…</div>}
+          {rules && rules.length === 0 && (
+            <div style={{ padding: 20, fontSize: 12, color: 'var(--text-4)', textAlign: 'center' }}>
+              No notification rules yet. Click <strong>New rule</strong> to create one.
+            </div>
+          )}
+          {rules && rules.length > 0 && (
+            <table className="tbl">
+              <thead><tr>
+                <th style={{ width: 36 }}></th>
+                <th>Name</th>
+                <th style={{ width: 200 }}>Event</th>
+                <th style={{ width: 220 }}>Target</th>
+                <th style={{ width: 180 }}>Filter</th>
+                <th style={{ width: 50 }}></th>
+              </tr></thead>
+              <tbody>
+                {rules.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      <button onClick={() => toggleRule(r)}
+                              style={{ all: 'unset', cursor: 'pointer' }}
+                              title={r.active ? 'Pause this rule' : 'Resume'}>
+                        <span className="dot" style={{ background: r.active ? '#3fb950' : 'var(--text-mute)' }} />
+                      </button>
+                    </td>
+                    <td style={{ fontSize: 12.5 }}>{r.name}</td>
+                    <td><span className="tag" style={{ fontSize: 10 }}>{r.event_type}</span></td>
+                    <td className="mono" style={{ fontSize: 11.5 }}>{r.target}</td>
+                    <td style={{ fontSize: 11, color: 'var(--text-3)' }}>
+                      {Object.keys(r.filter || {}).length === 0
+                        ? <span style={{ color: 'var(--text-4)' }}>(none)</span>
+                        : Object.entries(r.filter).map(([k, v]) => (
+                            <span key={k} className="mono" style={{ marginRight: 6 }}>{k}={String(v)}</span>
+                          ))}
+                    </td>
+                    <td>
+                      <button className="btn sm" style={{ padding: '2px 6px' }}
+                              onClick={() => removeRule(r)} title="Delete">
+                        <Trash s={10} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* Recent dispatches */}
+      <div className="card">
+        <div className="card-h"><MessageSquare s={13} />
+          <div className="t">Recent dispatches</div>
+          <div className="s">last 20 · auto-refreshes</div>
+        </div>
+        <div className="card-b flush" style={{ overflow: 'auto', maxHeight: 360 }}>
+          {(!dispatches || dispatches.length === 0) && (
+            <div style={{ padding: 14, fontSize: 12, color: 'var(--text-4)' }}>
+              Nothing dispatched yet. Wait for a triggering event, or send a test above.
+            </div>
+          )}
+          {dispatches && dispatches.length > 0 && (
+            <table className="tbl">
+              <thead><tr>
+                <th style={{ width: 80 }}>Status</th>
+                <th style={{ width: 180 }}>Event</th>
+                <th style={{ width: 220 }}>Target</th>
+                <th>Ref / Error</th>
+                <th style={{ width: 120 }}>When</th>
+              </tr></thead>
+              <tbody>
+                {dispatches.map((d) => (
+                  <tr key={d.id}>
+                    <td>
+                      <span className={`badge ${d.status === 'sent' ? 'low' : d.status === 'failed' ? 'crit' : 'mute'}`}>
+                        {d.status}
+                      </span>
+                    </td>
+                    <td><span className="tag" style={{ fontSize: 10 }}>{d.event_type}</span></td>
+                    <td className="mono" style={{ fontSize: 11 }}>{d.target}</td>
+                    <td className="mono" style={{ fontSize: 10.5, color: d.error ? '#f85149' : 'var(--text-3)' }}>
+                      {d.error ? d.error.slice(0, 80) : (d.event_ref || '')}
+                    </td>
+                    <td className="mono" style={{ fontSize: 10, color: 'var(--text-4)' }}>
+                      {new Date(d.sent_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      {/* New rule modal — Modal renders its own Cancel + submit footer,
+          we just supply the form body and the submit callback. */}
+      {showNew && (
+        <Modal
+          title="New notification rule"
+          onClose={() => setShowNew(false)}
+          submit={{
+            label: saving ? 'Saving…' : 'Create rule',
+            icon: saving ? <Refresh s={11} /> : <Plus s={11} />,
+            disabled: saving || !form.target.trim(),
+            onClick: createRule,
+          }}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <label style={{ fontSize: 11, color: 'var(--text-4)' }}>Name (optional)</label>
+            <input className="input" placeholder="e.g. SOC ops mailing list"
+                   value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
+
+            <label style={{ fontSize: 11, color: 'var(--text-4)' }}>Event type</label>
+            <select className="select" value={form.event_type}
+                    onChange={(e) => setForm(f => ({ ...f, event_type: e.target.value }))}>
+              {EVENT_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+
+            <label style={{ fontSize: 11, color: 'var(--text-4)' }}>Email target</label>
+            <input className="input" placeholder="alerts@bank.example"
+                   value={form.target} onChange={(e) => setForm(f => ({ ...f, target: e.target.value }))} />
+
+            {/* Per-event filter options */}
+            {form.event_type === 'cve.exploited' && (
+              <>
+                <label style={{ fontSize: 11, color: 'var(--text-4)' }}>Minimum severity (optional)</label>
+                <select className="select" value={form.severity_min}
+                        onChange={(e) => setForm(f => ({ ...f, severity_min: e.target.value }))}>
+                  <option value="">any</option>
+                  <option value="medium">medium and above</option>
+                  <option value="high">high and above</option>
+                  <option value="critical">critical only</option>
+                </select>
+                <label style={{ fontSize: 11, color: 'var(--text-4)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <input type="checkbox" checked={form.product_match}
+                         onChange={(e) => setForm(f => ({ ...f, product_match: e.target.checked }))} />
+                  Only when the product is in our CMDB profile
+                </label>
+              </>
+            )}
+
+            {createErr && (
+              <div style={{ padding: '6px 10px', background: 'rgba(248,81,73,0.08)',
+                            border: '1px solid rgba(248,81,73,0.3)', borderRadius: 4,
+                            color: '#f85149', fontSize: 11 }}>
+                {createErr}
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }

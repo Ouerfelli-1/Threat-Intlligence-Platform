@@ -5,9 +5,11 @@ embedded scheduler, Jinja2 templates, auth, and SQLite removed.
 """
 import asyncio
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -63,6 +65,7 @@ async def _monitor_domain(session: AsyncSession, domain: Domain, screenshot_dir:
 
     # Detect changes vs previous snapshot
     changes_found = 0
+    emitted_changes: list[dict] = []  # captured for notification emit below
     if prev_snapshot and prev_snapshot.details:
         diffs = diff_dns(prev_snapshot.details, details)
         for diff in diffs:
@@ -76,9 +79,50 @@ async def _monitor_domain(session: AsyncSession, domain: Domain, screenshot_dir:
             )
             session.add(change)
             changes_found += 1
+            emitted_changes.append({
+                "change_type": diff["type"],
+                "before": diff["before"],
+                "after": diff["after"],
+            })
 
     # Update last_checked_at
     domain.last_checked_at = datetime.now(timezone.utc)
 
     await session.commit()
+
+    # Notify the orchestrator about each change so configured rules
+    # (e.g. "email me on any DNS change for crown-jewel domains") can
+    # fire. Fire-and-forget: failures here don't roll back the snapshot,
+    # they just mean the alert didn't fan out this cycle.
+    for ev in emitted_changes:
+        await _notify_change(domain, ev)
+
     return {"changes": changes_found}
+
+
+async def _notify_change(domain: Domain, change: dict) -> None:
+    """Best-effort POST to orchestrator /internal/notify. Inter-service
+    calls are unauthenticated now (see auth simplification commit)."""
+    orch_url = os.environ.get("ORCHESTRATOR_URL") or "http://orchestrator:8014"
+    try:
+        async with httpx.AsyncClient(timeout=5) as c:
+            await c.post(
+                f"{orch_url}/internal/notify",
+                json={
+                    "event_type": "domainwatch.change",
+                    "event_ref": domain.name,
+                    "payload": {
+                        "domain": domain.name,
+                        "domain_id": str(domain.id),
+                        "title": f"Domain change detected: {domain.name}",
+                        "summary": f"change_type={change['change_type']}",
+                        "change_type": change["change_type"],
+                        "before": change["before"],
+                        "after": change["after"],
+                        "severity": "medium",
+                        "link": f"/surface/domains?id={domain.id}",
+                    },
+                },
+            )
+    except Exception as exc:
+        log.warning("notify_emit_failed domain=%s err=%s", domain.name, exc)

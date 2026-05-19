@@ -114,3 +114,45 @@ class SourceHealth(Base):
     last_error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     last_http_status: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
     updated_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
+
+
+class NotificationRule(Base):
+    """Configurable rule mapping (event_type, optional filter) -> channel/target.
+
+    Multiple rules can exist for the same event_type — each one fires
+    independently when its filter matches. Filter is a JSON predicate
+    evaluated against the event payload (see app.notify.dispatcher).
+    """
+    __tablename__ = "notification_rules"
+    __table_args__ = {"schema": SCHEMA}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    name: Mapped[str] = mapped_column(sa.String(128), nullable=False)
+    event_type: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    channel: Mapped[str] = mapped_column(sa.String(32), nullable=False)
+    target: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    filter: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    active: Mapped[bool] = mapped_column(sa.Boolean, nullable=False, server_default="true")
+    created_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
+    updated_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
+
+
+class NotificationDispatch(Base):
+    """Audit row written every time we attempt to send a notification.
+
+    Even failed sends are logged with the error so the UI can surface
+    a SMTP misconfig before it costs an analyst a missed alert.
+    """
+    __tablename__ = "notification_dispatches"
+    __table_args__ = {"schema": SCHEMA}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    rule_id: Mapped[Optional[uuid.UUID]] = mapped_column(UUID(as_uuid=True), nullable=True)
+    event_type: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    event_ref: Mapped[Optional[str]] = mapped_column(sa.String(256), nullable=True)
+    channel: Mapped[str] = mapped_column(sa.String(32), nullable=False)
+    target: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    status: Mapped[str] = mapped_column(sa.String(32), nullable=False)
+    error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    payload: Mapped[dict] = mapped_column(JSONB, nullable=False, server_default="{}")
+    sent_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())

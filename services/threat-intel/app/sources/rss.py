@@ -3,11 +3,13 @@ Pulls supply-chain / threat intelligence RSS feeds and stores normalized Threat 
 """
 import hashlib
 import logging
+import os
 import uuid
 from datetime import datetime, timezone
 from email.utils import parsedate_to_datetime
 
 import feedparser
+import httpx
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -154,4 +156,52 @@ async def ingest_feed(session: AsyncSession, feed_config: dict, health: SourceHe
         log.error("feed_commit_failed source=%s error=%s", source_name, exc)
         return 0
 
+    # Emit threat.supply_chain notifications post-commit. We only fire
+    # for newly-added rows whose detected type is supply_chain (the
+    # severity ladder + notification filter handles severity_min /
+    # product_match in the dispatcher).
+    if count:
+        # Re-query to grab the newly-inserted supply_chain rows we just
+        # committed. Cheaper than tracking refs in-loop because most
+        # cycles return 0-3 new threats.
+        new_sc_stmt = (
+            select(Threat)
+            .where(Threat.source == source_name, Threat.type == "supply_chain")
+            .order_by(Threat.observed_at.desc())
+            .limit(20)
+        )
+        new_sc = (await session.execute(new_sc_stmt)).scalars().all()
+        # Filter to ones added in this cycle (last 5 min) so we don't
+        # re-fire for everything in the table.
+        from datetime import timedelta
+        recent_cutoff = datetime.now(timezone.utc) - timedelta(minutes=5)
+        for t in new_sc:
+            if t.observed_at and t.observed_at >= recent_cutoff:
+                await _notify_supply_chain(t)
+
     return count
+
+
+async def _notify_supply_chain(threat) -> None:
+    """Fire-and-forget POST to orchestrator /internal/notify for a new
+    supply-chain threat row. Inter-service calls are unauthenticated."""
+    orch_url = os.environ.get("ORCHESTRATOR_URL") or "http://orchestrator:8014"
+    try:
+        async with httpx.AsyncClient(timeout=5) as c:
+            await c.post(
+                f"{orch_url}/internal/notify",
+                json={
+                    "event_type": "threat.supply_chain",
+                    "event_ref": str(threat.id),
+                    "payload": {
+                        "title": threat.title,
+                        "summary": threat.summary or "",
+                        "source": threat.source,
+                        "source_url": threat.source_url,
+                        "severity": threat.severity or "medium",
+                        "link": f"/intelligence/supply-chain?id={threat.id}",
+                    },
+                },
+            )
+    except Exception as exc:
+        log.warning("supply_chain_notify_failed threat=%s err=%s", threat.id, exc)
