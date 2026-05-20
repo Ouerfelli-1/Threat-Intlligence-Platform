@@ -153,7 +153,7 @@ export default function DashboardPage() {
         <KPI label="Total IOCs"        value={isLoading ? '...' : fmtNum(data?.iocs_total ?? 0)}     delta="live" deltaDir="up" spark={spark(16, 30)} live />
         <KPI label="Active CVEs"       value={isLoading ? '...' : fmtNum(data?.cves_total ?? 0)}     delta="tracked" deltaDir="up" spark={spark(16, 18)} color="#d29922" />
         <KPI label="Threats"           value={isLoading ? '...' : fmtNum(data?.threats_total ?? 0)}  delta="active"  deltaDir="up" spark={[1,2,2,3,3,2,3,3,3,3]} color="#f85149" />
-        <KPI label="Articles ingested" value={isLoading ? '...' : fmtNum(data?.articles_total ?? 0)} delta="indexed" deltaDir="up" spark={spark(16, 22)} color="#58a6ff" />
+        <KPI label="Articles ingested" value={isLoading ? '...' : fmtNum(data?.articles_total ?? 0)} delta="indexed" deltaDir="up" spark={spark(16, 22)} color="#2dd4bf" />
         <KPI label="Ranked actors"     value={isLoading ? '...' : fmtNum(data?.actors_total ?? 0)}   delta="profiled" deltaDir="dn" spark={[6,7,7,8,8,9,9,9,9,9]} color="#a371f7" />
         <KPI
           label="Service health"

@@ -85,7 +85,7 @@ export default function SchedulerPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 12 }}>
-        <KPI label="Recent runs"   value={String(totalRuns)}                                     delta="last 30" deltaDir="up" color="#58a6ff" />
+        <KPI label="Recent runs"   value={String(totalRuns)}                                     delta="last 30" deltaDir="up" color="#2dd4bf" />
         <KPI label="Success rate"  value={totalRuns ? `${Math.round(successCount / totalRuns * 100)}%` : '—'} delta={`${successCount} ok`} deltaDir="up" color="#3fb950" />
         <KPI label="Running"       value={String(runningCount)}                                  delta="now"     deltaDir="up" color="#d29922" live={runningCount > 0} />
         <KPI label="Failed"        value={String(failedCount)}                                   delta="needs attn" deltaDir="up" color="#f85149" />

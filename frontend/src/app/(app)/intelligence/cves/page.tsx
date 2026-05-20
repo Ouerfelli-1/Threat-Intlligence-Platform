@@ -77,10 +77,10 @@ export default function CveListPage() {
           <option value="low">Low</option>
         </select>
         <label style={{ fontSize: 11.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <input type="checkbox" checked={kevOnly} onChange={(e) => { setKevOnly(e.target.checked); setPage(1); }} style={{ accentColor: '#58a6ff' }} />Exploited in the Wild
+          <input type="checkbox" checked={kevOnly} onChange={(e) => { setKevOnly(e.target.checked); setPage(1); }} style={{ accentColor: '#2dd4bf' }} />Exploited in the Wild
         </label>
         <label style={{ fontSize: 11.5, color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: 6 }}>
-          <input type="checkbox" checked={showNotRel} onChange={(e) => setShowNotRel(e.target.checked)} style={{ accentColor: '#58a6ff' }} />Show not-rel
+          <input type="checkbox" checked={showNotRel} onChange={(e) => setShowNotRel(e.target.checked)} style={{ accentColor: '#2dd4bf' }} />Show not-rel
         </label>
       </FilterBar>
 

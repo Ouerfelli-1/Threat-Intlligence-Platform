@@ -226,7 +226,7 @@ export default function AsmPage() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <ChevronRight s={12} />
                       <div style={{ flex: 1, fontSize: 12.5, color: 'var(--text)', fontWeight: 500 }}>{s.name}</div>
-                      {isAutoSync && <span className="tag" style={{ fontSize: 10, color: '#58a6ff' }} title="Auto-synced from CMDB company profile (domains + IP ranges + ASNs). Edit /assets/profile to manage entries.">CMDB sync</span>}
+                      {isAutoSync && <span className="tag" style={{ fontSize: 10, color: '#2dd4bf' }} title="Auto-synced from CMDB company profile (domains + IP ranges + ASNs). Edit /assets/profile to manage entries.">CMDB sync</span>}
                       <span className={`badge ${!paused ? 'low' : 'mute'}`}>
                         <span className="dot" />{!paused ? 'active' : 'paused'}
                       </span>

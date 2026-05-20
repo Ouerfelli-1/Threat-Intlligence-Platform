@@ -166,7 +166,7 @@ export default function UsersPage() {
                 <td><input type="checkbox" /></td>
                 <td>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg,#1f6feb,#a371f7)', display: 'grid', placeItems: 'center', fontSize: 9, fontWeight: 600, color: '#fff' }}>
+                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: 'linear-gradient(135deg,#2dd4bf,#a371f7)', display: 'grid', placeItems: 'center', fontSize: 9, fontWeight: 600, color: '#0a1a18' }}>
                       {u.username.split('.').map((s) => s[0]).join('').slice(0, 2).toUpperCase()}
                     </div>
                     <span className="mono" style={{ fontSize: 11.5, color: 'var(--text)' }}>{u.username}</span>

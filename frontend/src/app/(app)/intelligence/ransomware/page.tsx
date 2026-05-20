@@ -261,7 +261,7 @@ export default function RansomwarePage() {
         <KPI label="Active groups"      value={gLoading ? '...' : String(activeGroups)}            delta={`${groupsTotal.toLocaleString()} total`} deltaDir="up" color="#f85149" />
         <KPI label="Victims this month" value={vLoading ? '...' : String(thisMonth)}               delta="disclosed" deltaDir="up" color="#d29922" />
         <KPI label="Top sector"         value={topSector}                                          delta="most hit" deltaDir="up" color="#a371f7" />
-        <KPI label="Top country"        value={topCountry}                                         delta="most hit" deltaDir="up" color="#58a6ff" />
+        <KPI label="Top country"        value={topCountry}                                         delta="most hit" deltaDir="up" color="#2dd4bf" />
         <KPI label="Total tracked"      value={vLoading ? '...' : victimsTotal.toLocaleString()}   delta="victims" deltaDir="up" live color="#3fb950" />
       </div>
 

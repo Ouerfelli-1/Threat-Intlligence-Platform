@@ -41,7 +41,7 @@ function riskColor(score: number | null) {
   if (score == null) return '#8b949e';
   if (score >= 80) return '#f85149';
   if (score >= 50) return '#d29922';
-  if (score >= 30) return '#58a6ff';
+  if (score >= 30) return '#2dd4bf';
   return '#3fb950';
 }
 
@@ -184,7 +184,7 @@ function AIPanel({
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>MITRE ATT&amp;CK Techniques</div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {ttps.map((t) => <Tag key={t} color="#58a6ff">{t}</Tag>)}
+                {ttps.map((t) => <Tag key={t} color="#2dd4bf">{t}</Tag>)}
               </div>
             </div>
           )}
@@ -705,7 +705,7 @@ export default function InvestigatePage() {
                           <div style={{ marginTop: 10 }}>
                             <div style={{ fontSize: 10, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>Open ports</div>
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                              {shodanPorts.map((p) => <Tag key={p} color="#58a6ff">{p}</Tag>)}
+                              {shodanPorts.map((p) => <Tag key={p} color="#2dd4bf">{p}</Tag>)}
                             </div>
                           </div>
                         )}

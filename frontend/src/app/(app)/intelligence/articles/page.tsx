@@ -68,7 +68,7 @@ export default function ArticleListPage() {
                 type="checkbox"
                 checked={showNotRel}
                 onChange={(e) => setShowNotRel(e.target.checked)}
-                style={{ accentColor: '#58a6ff' }}
+                style={{ accentColor: '#2dd4bf' }}
               />Show not&#x2011;relevant
             </label>
           </>

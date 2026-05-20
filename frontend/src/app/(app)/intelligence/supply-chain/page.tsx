@@ -22,7 +22,9 @@ function sevColor(s: string | null) {
   switch (s?.toUpperCase()) {
     case 'CRITICAL': return '#f85149';
     case 'HIGH':     return '#d29922';
-    case 'MEDIUM':   return '#58a6ff';
+    // medium was the same electric blue as the accent — clashed visually
+    // after the teal shift. Warm amber matches the platform-wide --med.
+    case 'MEDIUM':   return '#e8a33a';
     case 'LOW':      return '#3fb950';
     default:         return '#8b949e';
   }
@@ -288,7 +290,7 @@ export default function SupplyChainPage() {
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 14, flexShrink: 0 }}>
-        <KPI label="Total tracked"       value={isLoading ? '…' : String(total)}                      delta="supply chain events" deltaDir="up" color="#58a6ff" />
+        <KPI label="Total tracked"       value={isLoading ? '…' : String(total)}                      delta="supply chain events" deltaDir="up" color="#2dd4bf" />
         <KPI label="This month"          value={isLoading ? '…' : String(thisMonth)}                  delta="new incidents" deltaDir="up" color="#d29922" live />
         <KPI label="Critical"            value={isLoading ? '…' : String(sevCounts['CRITICAL'] ?? 0)} delta="severity" deltaDir="up" color="#f85149" />
         <KPI label="High"                value={isLoading ? '…' : String(sevCounts['HIGH'] ?? 0)}     delta="severity" deltaDir="up" color="#d29922" />

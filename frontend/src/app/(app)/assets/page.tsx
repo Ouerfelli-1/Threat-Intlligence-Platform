@@ -95,10 +95,10 @@ export default function AssetsPage() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10, marginBottom: 12 }}>
-        <KPI label="Total assets"   value={isLoading ? '...' : total.toLocaleString()} delta="in CMDB" deltaDir="up" color="#58a6ff" />
+        <KPI label="Total assets"   value={isLoading ? '...' : total.toLocaleString()} delta="in CMDB" deltaDir="up" color="#2dd4bf" />
         <KPI label="Critical"       value={String(counts.critical)} delta="crown jewels" deltaDir="up" color="#f85149" />
         <KPI label="High"           value={String(counts.high)}     delta="hardened"     deltaDir="up" color="#d29922" />
-        <KPI label="Medium"         value={String(counts.medium)}   delta="standard"     deltaDir="up" color="#58a6ff" />
+        <KPI label="Medium"         value={String(counts.medium)}   delta="standard"     deltaDir="up" color="#2dd4bf" />
         <KPI label="Low / Endpoint" value={String(counts.low)}      delta="endpoints"    deltaDir="up" color="#3fb950" />
       </div>
 

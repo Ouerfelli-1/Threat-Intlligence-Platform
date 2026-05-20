@@ -98,7 +98,7 @@ export default function WazuhPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 12 }}>
         <KPI label="Level 12+ alerts"  value={String(crit)}   delta="critical" deltaDir="up" color="#f85149" live={crit > 0} />
         <KPI label="Level 8–11 alerts" value={String(high)}   delta="high"     deltaDir="up" color="#d29922" />
-        <KPI label="Level ≤ 7 alerts"  value={String(low)}    delta="low"      deltaDir="dn" color="#58a6ff" />
+        <KPI label="Level ≤ 7 alerts"  value={String(low)}    delta="low"      deltaDir="dn" color="#2dd4bf" />
         <KPI label="Agents online"     value={`${active}/${agents.length}`} delta="active" deltaDir="dn" color="#3fb950" />
       </div>
 
