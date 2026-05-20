@@ -1,0 +1,64 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2c5aa0', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
+
+flowchart TB
+    subgraph Client
+        CLI[Client / CLI]
+    end
+
+    subgraph Manager["Manager Service :8000"]
+        API[api/main.py<br/>FastAPI Routes]
+        SVC[services/*.py<br/>Business Logic]
+        MDL[models/schemas.py<br/>Pydantic DTOs]
+        DBL[database/models.py<br/>SQLAlchemy ORM]
+    end
+
+    subgraph Scheduler["Scheduler Service"]
+        SCHED[scheduler_service.py<br/>APScheduler]
+    end
+
+    subgraph Engine["Engine Worker"]
+        WRK[worker.py<br/>Job Executor]
+        MOD[modules/*.py<br/>Recon Modules]
+    end
+
+    subgraph Findings["Findings API :8001"]
+        FAPI[main.py<br/>Query API]
+    end
+
+    subgraph Storage["Data Layer"]
+        REDIS[(Redis<br/>Job Queue)]
+        PG[(PostgreSQL<br/>TimescaleDB)]
+    end
+
+    subgraph Observability["Observability"]
+        GRAF[Grafana<br/>Dashboards :3000]
+    end
+
+    %% Client to Manager
+    CLI -->|HTTP REST| API
+
+    %% Manager internal flow
+    API --> SVC
+    SVC --> MDL
+    SVC --> DBL
+    DBL -->|SQL| PG
+
+    %% Manager to Redis
+    SVC -->|lpush jobs| REDIS
+
+    %% Scheduler flow
+    SCHED -->|SELECT schedules| PG
+    SCHED -->|lpush jobs| REDIS
+
+    %% Engine flow
+    REDIS -->|brpop jobs| WRK
+    WRK --> MOD
+    WRK -->|UPDATE status| PG
+    MOD -->|INSERT findings| PG
+
+    %% Findings API
+    CLI -->|HTTP REST| FAPI
+    FAPI -->|SELECT findings| PG
+
+    %% Grafana
+    GRAF -->|SQL queries| PG

@@ -1,0 +1,118 @@
+@startuml Primary Use Case - Job Execution Flow
+
+title Job Creation → Execution → Finding Persistence
+
+skinparam sequenceArrowThickness 2
+skinparam participantPadding 10
+skinparam boxPadding 5
+
+actor Client
+participant "api/main.py\nFastAPI" as API
+participant "JobService" as JobSvc
+participant "PostgreSQL" as DB
+queue "Redis\nrecon_jobs" as Redis
+participant "ReconWorker" as Worker
+participant "modules/*.py\nEnumerators" as Modules
+participant "External APIs\n(Shodan, NVD)" as External
+
+== Phase 1: Job Creation ==
+
+Client -> API: POST /api/v1/scopes/{id}/jobs\n{mode: "active"}
+activate API
+
+API -> JobSvc: create_job(JobCreate)
+activate JobSvc
+
+JobSvc -> DB: INSERT INTO jobs\n(status='PENDING')
+DB --> JobSvc: job_id
+
+JobSvc -> Redis: lpush('recon_jobs', job_json)
+Redis --> JobSvc: OK
+
+JobSvc --> API: Job
+deactivate JobSvc
+
+API --> Client: 201 Created\n{job_id, status: "PENDING"}
+deactivate API
+
+== Phase 2: Job Pickup ==
+
+Worker -> Redis: brpop('recon_jobs', timeout=5)
+activate Worker
+Redis --> Worker: job_json
+
+Worker -> Worker: json.loads(job_json)
+
+Worker -> DB: UPDATE jobs SET status='RUNNING',\nstarted_at=NOW()
+DB --> Worker: OK
+
+== Phase 3: Target Resolution ==
+
+Worker -> DB: SELECT * FROM targets\nWHERE scope_id=? AND enabled=true
+DB --> Worker: targets[]
+
+== Phase 4: Passive Recon Execution ==
+
+loop for each target
+    Worker -> Modules: SubdomainEnumerator(domain)
+    activate Modules
+    Modules -> External: crt.sh, HackerTarget, etc.
+    External --> Modules: subdomains[]
+    Modules --> Worker: Set[str]
+    deactivate Modules
+    
+    Worker -> DB: INSERT INTO recon_findings\n(type='subdomain', value=...)
+    
+    Worker -> Modules: DNSEnumerator._query_domain()
+    activate Modules
+    Modules --> Worker: dns_records{}
+    deactivate Modules
+    
+    Worker -> DB: INSERT INTO recon_findings\n(type='dns_a', value=...)
+    
+    Worker -> Modules: ShodanEnumerator.enumerate(ips)
+    activate Modules
+    Modules -> External: Shodan API
+    External --> Modules: host_info{}
+    Modules --> Worker: Dict[ip, data]
+    deactivate Modules
+    
+    Worker -> DB: INSERT INTO recon_findings\n(type='shodan_port', value=...)
+end
+
+== Phase 5: Active Recon Execution (if mode=active) ==
+
+Worker -> Modules: NmapEnumerator.enumerate(ips)
+activate Modules
+Modules -> Modules: nmap port scan
+Modules --> Worker: scan_results{}
+deactivate Modules
+
+Worker -> DB: INSERT INTO recon_findings\n(type='nmap_port', value=...)
+
+Worker -> Modules: CVELookup.search(service, version)
+activate Modules
+Modules -> External: NVD API
+External --> Modules: CVEResult[]
+Modules --> Worker: cve_list[]
+deactivate Modules
+
+Worker -> DB: INSERT INTO recon_findings\n(type='cve', value=...)
+
+== Phase 6: Job Completion ==
+
+Worker -> DB: UPDATE jobs SET\nstatus='COMPLETED',\ncompleted_at=NOW(),\nfindings_count=N
+DB --> Worker: OK
+
+deactivate Worker
+
+== Phase 7: Results Query (Optional) ==
+
+Client -> API: GET /api/v1/findings?scope_id=X
+activate API
+API -> DB: SELECT * FROM recon_findings\nWHERE scope_id=?
+DB --> API: findings[]
+API --> Client: 200 OK\n{findings: [...]}
+deactivate API
+
+@enduml

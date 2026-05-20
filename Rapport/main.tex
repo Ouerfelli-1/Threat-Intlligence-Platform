@@ -1,0 +1,206 @@
+\documentclass[a4paper,12pt]{report}
+
+
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+\usepackage[T1]{fontenc}
+\usepackage[a4paper,margin=2cm]{geometry} % margins (replaces anysize)
+
+%%%%%%%% Preamble %%%%%%%%%%%%
+\usepackage[hidelinks]{hyperref}
+\usepackage[utf8]{inputenc} % File coding uses utf8
+\usepackage{amsmath} % Extra commands for math
+\usepackage{amssymb} % Math symbols
+\usepackage{graphicx} % Include images in LaTeX
+\usepackage{color} % Coloring text
+\usepackage{float} % Allow you to use [H] specifier to force the position of the images
+\usepackage{caption} % to customize the captions in floating environments like figure and table
+
+
+
+
+%webography
+\usepackage[natbib=true,style=numeric,sorting=none]{biblatex}
+\addbibresource{bib/webography.bib}
+\renewcommand\bibname{Webography}
+
+% webography to remove italic and stuff
+
+\makeatletter
+\renewrobustcmd*{\mkbibemph}{}
+\protected\long\def\blx@imc@mkbibemph#1{#1}
+\makeatother
+
+% Header and Footer
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+
+\renewcommand{\chaptermark}[1]{\markboth{\MakeUppercase{\thechapter: #1}}{}}
+\fancyhead[L]{CHAPTER \leftmark}
+\fancyhead[R]{}
+
+
+
+%\fancyhead[L]{\footnotesize Higher Institute of Technological Studies in Communications of Tunis}
+%\fancyhead[R]{\footnotesize Year 2025-2026}
+%\fancyfoot[C]{\thepage}  % center
+
+
+\renewcommand{\headrulewidth}{0.25pt} % remove the header line
+\renewcommand{\footrulewidth}{0pt} % remove the footer line
+
+\usepackage{listings} % To use source code
+\definecolor{dkgreen}{rgb}{0,0.6,0} % Color for using code
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+% Language to use
+\lstset{language=Python,
+   keywords={break,case,catch,continue,else,elseif,end,for,function,
+      global,if,otherwise,persistent,return,switch,try,while,async,await,class,def,import,from},
+   basicstyle=\ttfamily\footnotesize,
+   keywordstyle=\color{blue},
+   commentstyle=\color{red},
+   stringstyle=\color{dkgreen},
+   numbers=left,
+   numberstyle=\tiny\color{gray},
+   stepnumber=1,
+   numbersep=10pt,
+   backgroundcolor=\color{white},
+   tabsize=4,
+   showspaces=false,
+   showstringspaces=false}
+
+\title{Degree project}
+
+\setcounter{secnumdepth}{4}
+\setcounter{tocdepth}{4}
+\setcounter{chapter}{0}
+\graphicspath{ {./images/} }
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% for table of contents spacing
+
+% for table of figures
+\linespread{1.25}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{acronym}
+
+\pagenumbering{roman}
+\begin{document}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% =====================================================================
+% NOTE: The institutional cover page / title page provided by the
+% school template should be placed here (e.g. \includepdf{cover.pdf}).
+% It is intentionally omitted so it can be added without conflict.
+% =====================================================================
+
+\newpage
+\chapter*{Acknowledgement}
+
+First, we would like to thank everyone who, in one way or another, contributed to the completion of this project. We are especially grateful to the open threat-intelligence community, whose freely shared feeds, standards, and tooling, MITRE ATT\&CK, abuse.ch, CISA, and the FIRST.org EPSS effort among them, made an integrative platform such as ours possible in the first place.\hfill\break
+
+Second, we would like to express our gratitude to our academic supervisors for their invaluable guidance and support throughout the design and development of our Threat Intelligence Platform. Their knowledge and expertise were instrumental in helping us navigate the complexities of distributed systems design, secure software architecture, and the responsible application of large language models to security analysis. This project would not have been successful without their cooperation and insights.\hfill\break
+
+We also extend our sincere thanks to our host organization for welcoming us, framing a problem worth solving, and giving us the operational context that shaped every design decision in this work.\hfill\break
+
+Finally, we would like to express our deepest appreciation to our families for their unwavering support throughout this journey. Their encouragement and presence have been a constant source of motivation and strength.
+\hfill\break
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\chapter*{Acronyms}
+\input{acro_list}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\tableofcontents
+\clearpage
+\thispagestyle{plain}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\listoffigures
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\listoftables
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newpage
+\pagenumbering{arabic}
+\input{chapters/00_general_introduction}
+\input{chapters/01_threat_landscape}
+\input{chapters/02_theoretical_foundations}
+\input{chapters/03_state_of_the_art_and_positioning}
+\input{chapters/06_methodology_and_engineering_process}
+\input{chapters/02_requirements_and_rationale}
+\input{chapters/03_architecture}
+\input{chapters/04_infrastructure_and_platform_technologies}
+\input{chapters/05_service_catalogue_and_capabilities}
+\input{chapters/08_detailed_service_architectures}
+\input{chapters/07_data_api_and_frontend_workflows}
+\input{chapters/04_implementation_and_operations}
+\input{chapters/05_verification_limitations_and_conclusion}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\cleardoublepage
+\phantomsection
+\addcontentsline{toc}{chapter}{Webography}
+
+\nocite{*}
+\printbibliography
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Abstract and Résumé stacked vertically - for inclusion in main document
+\cleardoublepage
+\phantomsection
+
+\thispagestyle{empty}
+
+\vspace*{\fill}
+
+\noindent
+\begin{tabular}{|p{0.94\textwidth}|}
+\hline
+\\[0.6em]
+\multicolumn{1}{|c|}{\textbf{\large Abstract}} \\[0.5em]
+Modern security teams operate under compressed decision windows shaped by fast exploitation, identity-led intrusion, supply-chain compromise, and AI-assisted offensive tradecraft. Intelligence is abundant, but it is fragmented across feeds, tooling, and operational systems, which makes contextual prioritization slow and inconsistent.
+
+\vspace{0.5em}
+This project presents a self-hosted Threat Intelligence Platform built as fifteen cooperating FastAPI services over a schema-partitioned PostgreSQL database, with Redis, PgBouncer, a Next.js frontend, and a LiteLLM gateway. The platform continuously ingests intelligence from external sources, normalizes and deduplicates it, enriches it with organizational context, and applies structured AI-assisted analysis to produce ranked vulnerabilities, likely threat actors, operational reports, and analyst-facing investigation outputs.
+
+\vspace{0.5em}
+The analytical layer reads only processed data and never blocks ingestion, so the platform keeps operating when upstream AI providers fail. Services are isolated by schema, external calls are wrapped in a resilience layer, secrets are centralized, and the system remains operable on a single host. The report also evaluates the platform honestly: strong modularity and useful analytical acceleration are balanced against limited automated testing, a simplified internal trust model, and remaining production-hardening work.
+
+\vspace{0.5em}
+\textbf{Keywords:} Threat Intelligence, Microservices, Cybersecurity, Large Language Models, Fault Tolerance, API-First Architecture
+\hline
+\\[0.6em]
+\multicolumn{1}{|c|}{\textbf{\large Résumé}} \\[0.5em]
+Les équipes de sécurité opèrent aujourd'hui sous une forte compression du temps de décision, alimentée par l'exploitation rapide des vulnérabilités, la compromission des identités, les attaques de la chaîne d'approvisionnement et l'usage offensif de l'intelligence artificielle. Le renseignement existe en abondance, mais il reste dispersé entre de multiples flux et outils, ce qui rend la priorisation contextuelle lente et incohérente.
+
+\vspace{0.5em}
+Ce projet présente une plateforme de renseignement sur les menaces auto-hébergée, construite sous la forme de quinze services FastAPI coopérants autour d'une base PostgreSQL partitionnée par schéma, avec Redis, PgBouncer, une interface Next.js et une passerelle LiteLLM. La plateforme ingère en continu des renseignements provenant de sources externes, les normalise et les dédoublonne, les enrichit avec le contexte de l'organisation, puis applique une analyse assistée par l'IA pour produire des vulnérabilités classées, des acteurs probables, des rapports opérationnels et des résultats d'investigation pour les analystes.
+
+\vspace{0.5em}
+La couche analytique ne lit que des données déjà traitées et ne bloque jamais l'ingestion, ce qui permet à la plateforme de continuer à fonctionner même en cas de défaillance d'un fournisseur d'IA. Les services sont isolés par schéma, les appels externes sont rendus résilients, les secrets sont centralisés, et le système reste exploitable sur un hôte unique. Le mémoire évalue aussi honnêtement les limites actuelles : tests automatisés encore insuffisants, modèle de confiance interne simplifié et travaux de durcissement encore nécessaires.
+
+\vspace{0.5em}
+\textbf{Mots-clés :} Renseignement sur les menaces, Microservices, Cybersécurité, Modèles de langage, Tolérance aux pannes, Architecture orientée API
+\\[0.6em]
+\hline
+\end{tabular}
+
+\vspace*{\fill}
+
+\end{document}

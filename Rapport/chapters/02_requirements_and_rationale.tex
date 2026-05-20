@@ -1,0 +1,139 @@
+\chapter{Requirements, Constraints, and Design Rationale}
+\thispagestyle{plain}
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+Having established the external pressure driving the project, this chapter explains what the platform had to achieve and why the final design takes its particular shape. The discussion is grounded in the target operating model, the product specification, and the repository's shared design goals.
+
+\section{Requirements Engineering Perspective}
+Requirements are often written as if they were self-evident properties of the final system. In reality, they are a translation layer between stakeholder needs, environmental constraints, and architectural possibility. For an academic treatment, it is important to distinguish between what users explicitly ask for, what the environment silently imposes, and what the design team infers as necessary to make the system operationally coherent.
+
+In this project, requirement derivation followed a pragmatic path rather than a formal model-checking exercise. The primary sources were the user roles described by the repository, the comparative analysis of realistic alternatives, the design goals embedded in the documentation, and the observable behaviour of the implementation itself. This is closer to scenario-driven and quality-attribute-driven engineering than to a purely abstract specification process. The question was not simply ``what features should the software have?'' but ``what properties must the software exhibit to be genuinely usable by a small security team under real operational pressure?''
+
+This distinction matters because many important requirements in security platforms are not feature requests in the ordinary sense. ``The AI layer must degrade without blocking ingestion,'' ``the hot lookup path must remain fast under repeated access,'' and ``the operator must be able to see which upstream source is failing'' are quality requirements. They govern behaviour, trustworthiness, and operability rather than visible UI capability. A thesis-level discussion must therefore consider both functional and non-functional requirements as first-class design drivers.
+
+\section{Stakeholders and Operating Assumptions}
+The repository defines three primary user profiles. The first is the SOC analyst, who needs fast indicator verdicts and quick triage support. The second is the threat-intelligence analyst, who curates the intelligence base, manages actor context, and produces higher-level reporting. The third is the security manager, who consumes concise synthesized outputs rather than raw feeds. These stakeholder roles explain several implementation details that would otherwise appear incidental: aggressive caching on the indicator lookup path, durable storage of AI outputs, management-facing reports, and the existence of both library-style intelligence views and synthesized daily reporting.
+
+The operating assumptions are equally important. The deployment target is a single Linux host, not a large orchestrated cluster. The platform must remain usable when external sources fail. It must keep secrets centralized. It must support internal analysts with a small operational footprint. These assumptions eliminate architectures that are attractive in theory but poorly aligned with the team's real constraints.
+
+The stakeholder analysis also reveals an important tension. The SOC analyst values speed, low interaction cost, and trustworthy triage hints. The threat-intelligence analyst values depth, cross-source correlation, and editorial control over long-lived knowledge. The security manager values concise synthesis and justifiable prioritization rather than interface richness. These user needs are complementary, but not identical. The platform therefore cannot optimize only for one of them. It must expose both low-latency tactical workflows and slower, synthesis-heavy views derived from the same knowledge base.
+
+\section{From Problem Statement to Requirement Classes}
+The problem statement in the previous chapter can be decomposed into four requirement classes.
+
+The first class is data integration. Security-relevant knowledge is fragmented across feeds, sources, and operational systems. Without multi-source ingest and normalization, all higher-order analysis remains manual. The second class is contextual prioritization. A platform that aggregates data but does not relate it to the organization's own technologies, assets, and threat concerns still leaves the most important decisions to ad hoc reasoning. The third class is operational usability. Analysts will not use a platform during incident pressure if lookup is slow, workflows are scattered, or outputs are opaque. The fourth class is resilience. A security platform that becomes unusable whenever one feed fails or one model quota is exhausted is misaligned with the very environment it is meant to support.
+
+These four classes explain why the final system combines ingestion, storage, contextualization, synthesis, and user-facing workflows rather than specializing in only one of them. They also explain why some features that might appear secondary from a software perspective, such as source-health tracking or company-profile management, are actually central to the quality of the intelligence workflow.
+
+\section{Functional Requirements}
+The implemented platform satisfies a broad set of functional requirements that can be grouped into eight families.
+
+\subsection{Multi-Source Intelligence Ingestion}
+The system must ingest vulnerabilities, exploit-likelihood data, known-exploited vulnerability data, indicators, articles, threat actors, ransomware disclosures, breach intelligence, integration data from operational tooling, and organization-specific context. The implementation realizes this through dedicated services rather than a single ingestion monolith: news-collector, vuln-intel, threat-intel, ioc-collector, threat-actors, integrations, and supporting analyst services.
+
+\subsection{Normalization and Deduplication}
+Because the same real-world entity may appear across many feeds, the platform must normalize and deduplicate at ingest time. This is a central requirement rather than a cleanup step. The shared schema and indicator-normalization code enforce canonical keys so that corroboration and cross-source reasoning remain meaningful.
+
+\subsection{Fast Operational Lookup}
+The most latency-sensitive user path is the IOC lookup workflow. The system must return an operationally useful verdict quickly enough that analysts do not revert to external tools mid-triage. This requirement directly explains the Redis-first lookup path, TTL-based cache keys, and the choice to pre-ingest intelligence rather than fetch it on demand.
+
+\subsection{Contextual Prioritization}
+The platform must do more than store vulnerabilities and indicators. It must prioritize them relative to the organization's actual technologies, exposures, actors of concern, and operational environment. This requirement motivates the company profile in CMDB, actor-likelihood analysis, CVE relevance scoring, and the orchestrator's context fan-out.
+
+\subsection{Analyst Augmentation Rather Than Replacement}
+Analysts must be able to contribute notes, override AI outputs, rotate priorities, and retain organizational memory within the platform. This leads to durable note models, persisted reports, editable intelligence records, and a design in which AI outputs are materialized and reviewable rather than ephemeral chat transcripts.
+
+\subsection{Executive and Strategic Reporting}
+Managers need synthesized outputs rather than feed-level detail. The implementation responds with report generation, geopolitical outlook generation, policy-driven notification support, and a dashboard aggregator route that assembles cross-service views for rapid consumption.
+
+\subsection{Secure and Centralized Secret Handling}
+The platform must keep provider keys, integration credentials, and signing material out of service code and container configuration wherever possible. The dedicated secrets service, the bootstrap fetch flow, and the LiteLLM proxy's startup behaviour all trace back to this requirement.
+
+\subsection{Single-Command Operability}
+The platform must be operable by a small team with a constrained command surface. The Makefile targets, one-shot migration container, seed scripts, smoke checks, and diagnostic utilities reflect this requirement directly.
+
+\section{Requirement Traceability to Design Mechanisms}
+One sign of a mature design argument is that requirements can be traced to concrete architectural mechanisms. Table~\ref{tab:req-traceability} summarizes this relation for the most important requirements.
+
+\begin{table}[H]
+\centering
+\caption{Traceability from key requirements to implementation mechanisms}
+\label{tab:req-traceability}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{4.2cm}|p{7.0cm}|}
+\hline
+\textbf{Requirement} & \textbf{Primary design mechanism}\\
+\hline
+Fast IOC triage & Redis-first cache-aside lookup path plus stored normalized indicators\\
+\hline
+Source independence & One ingest service per intelligence domain with partial-success orchestration\\
+\hline
+Contextual vulnerability ranking & CMDB company profile, asset context, EPSS, KEV, AI relevance analysis\\
+\hline
+Auditable secret handling & Dedicated secrets service with encryption at rest and access logging\\
+\hline
+Single browser-facing entry & Next.js BFF with centralized routing and aggregation\\
+\hline
+Graceful AI degradation & LiteLLM gateway, fallback routing, persistent output materialization\\
+\hline
+Operational diagnosability & Source-health repositories, scheduler run history, correlation IDs, health endpoints\\
+\hline
+Modular evolution & Schema ownership per service and HTTP-only cross-service access\\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Non-Functional Requirements}
+\subsection{Availability and Graceful Degradation}
+Read APIs must continue to serve stored intelligence when upstream sources fail. AI outages must degrade analytical features, not ingestion or basic read operations. Scheduler-visible failure states must be inspectable. These requirements lead directly to the separation of ingest from synthesis, the resilient outbound HTTP layer, source-health tracking, and callback-driven long-running job completion.
+
+\subsection{Isolation and Evolvability}
+Each service must be independently understandable and independently movable, even in a monorepo. This requirement explains the schema-per-service strategy, the absence of cross-schema foreign keys, the use of HTTP rather than direct cross-service table access, and the shared package layer for cross-cutting concerns.
+
+\subsection{Security and Auditability}
+The platform must enforce user authentication, support permission checks, centralize secrets, record access to sensitive material, and make privileged flows visible. The implementation meets this only partially in its current operational profile: the browser-facing edge is strongly defined, the auth and secrets services are robust, but most internal services run with auth simplification enabled on the private Docker network. This is a deliberate tradeoff and must be described as such, not as a stronger security posture than the code actually provides.
+
+\subsection{Operational Simplicity}
+The deployment model favours simplicity over distributed sophistication. Docker Compose, one relational database, one cache, and one AI gateway are easier to operate than a highly distributed mesh of dependencies. The system was designed to be understandable by a small team before it was designed to maximize horizontal scale.
+
+\subsection{Traceability and Diagnosability}
+When a source degrades or a scheduled job stalls, the operator must be able to identify the failing subsystem quickly. Source-health tables, job-run history, correlation IDs, secrets access logs, and explicit health endpoints satisfy this requirement more effectively than generic log aggregation alone.
+
+The theoretical value of these non-functional requirements should not be underestimated. In distributed and semi-distributed systems, many failures are not hard crashes but ambiguous degradations: stale data, slow sources, partial timeouts, repeated background-task failure, inconsistent output freshness, or quota exhaustion. A platform that cannot expose such degradation states becomes operationally opaque. Diagnosability is therefore not merely an administrative convenience; it is part of system correctness from the operator's perspective.
+
+\section{Design Goals and Their Consequences}
+The repository's explicit design goals explain much of the final architecture.
+
+\subsection{Availability Over Freshness}
+The platform favours stored intelligence over blocking reads on live external fetches. This is a practical security-operations decision: a slightly stale answer now is more useful than a theoretically fresh answer that arrives after the triage window has passed. The result is a scheduler-driven ingest model and read paths that operate over Postgres and Redis, not over live source calls.
+
+\subsection{Partial Success Is Success}
+Ingestion cycles are designed so that success on some sources is still operationally useful. This matters because external feeds fail independently. The use of asynchronous gather operations with exception capture rather than fail-fast orchestration is a direct expression of this goal.
+
+\subsection{AI Must Degrade, Not Break the Platform}
+The LLM is treated as the least reliable dependency in the system. This is why ingest services do not depend on AI to store data, why AI outputs are cached and persisted, and why the orchestrator is logically separate from ingestion. The design assumes quota exhaustion and provider instability as normal failure modes.
+
+\subsection{One Canonical Key per Real-World Indicator}
+Cross-source meaning depends on deterministic normalization. Without a canonical representation of indicators, corroboration becomes unreliable and inter-service workflows degrade into best-effort string matching. This explains the emphasis on normalization in shared schemas and on type-aware deduplication rules.
+
+\subsection{Each Service Owns Its Data}
+The architecture is based on the claim that independent services should not query each other's tables. This is one of the strongest and most consistently implemented design decisions in the repository. It allows per-service evolution, reduces schema coupling, and preserves a plausible path toward future physical separation.
+
+\subsection{Operational Simplicity Beats Premature Distribution}
+The system is intentionally single-host and message-light. The scheduler triggers HTTP endpoints instead of publishing to a heavier workflow fabric. The services coordinate through explicit HTTP and shared stores rather than through an event bus. This is a defensible choice because the real operating constraint is not hyper-scale; it is manageable day-two operations.
+
+Taken together, these goals define a prioritization order among qualities. Availability and graceful degradation dominate absolute freshness. Service ownership dominates shortcut data sharing. Operational clarity dominates architectural spectacle. Hot-path latency matters, but only where it changes analyst behaviour materially. This ordering is what gives the platform internal coherence. Without it, the system would risk becoming a collection of individually reasonable but collectively contradictory decisions.
+
+\section{Comparison to Realistic Alternatives}
+The repository's comparative analysis evaluates five practical alternatives: commercial TIP products, OpenCTI, MISP, SIEM-native intelligence features, and point tools. The project does not outperform all of them on every axis. A SaaS platform remains easier to operate. A mature SIEM performs deeper real-time event correlation. MISP remains stronger for some sharing workflows.
+
+The justification for the implemented system lies in a narrower intersection of needs. It is self-hosted, gives the team a single auditable AI egress, supports CVE relevance relative to the organization's own stack, ranks actor likelihood rather than merely storing actor records, and fits a small-seat deployment model. No alternative represented in the documentation provides those properties simultaneously at the same operational cost profile.
+
+This comparison also has methodological value. It prevents the thesis from overstating novelty. The project does not claim to invent threat intelligence, service decomposition, or AI summarization in isolation. Its contribution lies in how these elements are combined under one operational profile: self-hosted, small-team, multi-source, context-aware, AI-assisted, and designed around one auditable intelligence workflow rather than many disconnected tools.
+
+\section{Scope Boundaries}
+Several boundaries are explicit in the implementation and should remain explicit in the report. The platform is not a replacement for endpoint detection and response. It is not a general-purpose message-driven data platform. It does not provide high-availability clustering in its current form. It does not claim a large conventional automated test suite. These are not oversights in the narrative; they are boundaries of the delivered system and should remain visible to the reader.
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+The platform's structure follows from a coherent set of requirements: reduce analyst effort, prioritize intelligence relative to organizational context, keep secrets centralized, survive upstream failure, remain operable on a single host, and preserve service isolation without introducing unnecessary orchestration complexity. The architecture that emerges from those requirements is therefore best read not as a generic microservices exercise, but as a deliberately constrained system optimized for one operating model. The next chapter examines that architecture in detail.

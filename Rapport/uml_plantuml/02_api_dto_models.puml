@@ -1,0 +1,220 @@
+@startuml API DTO Models
+
+left to right direction
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+
+' ==================== ENUMS ====================
+
+enum TargetType {
+  DOMAIN
+  SUBDOMAIN
+  IP_ADDRESS
+  CIDR_RANGE
+  ASN
+  TLS_CERT
+}
+
+enum ReconMode {
+  PASSIVE
+  ACTIVE
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  PAUSED
+  CANCELLED
+}
+
+enum AggressivenessProfile {
+  STEALTH
+  NORMAL
+  AGGRESSIVE
+}
+
+enum NmapScanType {
+  FAST
+  DEFAULT
+  FULL
+}
+
+' ==================== TARGET DTOs ====================
+
+class Target <<BaseModel>> {
+  id: Optional[str]
+  scope_id: str
+  type: TargetType
+  value: str
+  enabled: bool
+}
+
+class TargetCreate <<BaseModel>> {
+  type: TargetType
+  value: str
+  enabled: bool = True
+}
+
+class TargetUpdate <<BaseModel>> {
+  value: Optional[str]
+  enabled: Optional[bool]
+}
+
+' ==================== SCOPE DTOs ====================
+
+class Scope <<BaseModel>> {
+  id: Optional[str]
+  name: str
+  enabled: bool
+  targets: List[Target]
+  config: ScopeConfig
+}
+
+class ScopeCreate <<BaseModel>> {
+  name: str
+  enabled: bool = True
+  config: Optional[ScopeConfig]
+}
+
+class ScopeUpdate <<BaseModel>> {
+  name: Optional[str]
+  enabled: Optional[bool]
+  config: Optional[ScopeConfig]
+}
+
+' ==================== CONFIGURATION DTOs ====================
+
+class ScopeConfig <<BaseModel>> {
+  passive_enabled: bool
+  active_enabled: bool
+  passive_features: PassiveFeatures
+  active_features: ActiveFeatures
+  parameters: ReconParameters
+  nmap: NmapConfig
+  cve: CVEConfig
+}
+
+class PassiveFeatures <<BaseModel>> {
+  certificate_transparency: bool
+  dns_history: bool
+  crtsh: bool
+  virustotal: bool
+  ...12 sources
+}
+
+class ActiveFeatures <<BaseModel>> {
+  port_scanning: bool
+  cve_lookup: bool
+  http_probing: bool
+  technology_detection: bool
+}
+
+class ReconParameters <<BaseModel>> {
+  aggressiveness: AggressivenessProfile
+  rate_limit_enabled: bool
+  requests_per_second: int
+  max_concurrent: int
+}
+
+class NmapConfig <<BaseModel>> {
+  enabled: bool
+  scan_type: NmapScanType
+  ports: Optional[str]
+  threads: int
+  check_cves: bool
+}
+
+class CVEConfig <<BaseModel>> {
+  enabled: bool
+  nvd_api_key: Optional[str]
+  max_results_per_service: int
+}
+
+' ==================== SCHEDULE DTOs ====================
+
+class Schedule <<BaseModel>> {
+  id: Optional[str]
+  scope_id: str
+  name: str
+  mode: ReconMode
+  cron_expression: str
+}
+
+class ScheduleCreate <<BaseModel>> {
+  name: str
+  mode: ReconMode
+  cron_expression: str
+}
+
+class ScheduleUpdate <<BaseModel>> {
+  name: Optional[str]
+  cron_expression: Optional[str]
+}
+
+' ==================== JOB DTOs ====================
+
+class Job <<BaseModel>> {
+  id: Optional[str]
+  scope_id: str
+  mode: ReconMode
+  status: JobStatus
+  findings_count: int
+}
+
+class JobCreate <<BaseModel>> {
+  scope_id: str
+  mode: ReconMode
+  triggered_by: str
+}
+
+class JobUpdate <<BaseModel>> {
+  status: Optional[JobStatus]
+  enabled: Optional[bool]
+}
+
+' ==================== RESPONSE DTOs ====================
+
+class APIResponse <<BaseModel>> {
+  success: bool
+  message: Optional[str]
+  data: Optional[Any]
+  errors: Optional[List[str]]
+}
+
+class PaginatedResponse <<BaseModel>> {
+  items: List[Any]
+  total: int
+  page: int
+  page_size: int
+}
+
+' ==================== RELATIONSHIPS ====================
+
+' Scope composition
+Scope *-- ScopeConfig : contains
+Scope o-- Target : has many
+ScopeCreate ..> ScopeConfig : optional
+ScopeUpdate ..> ScopeConfig : optional
+
+' Config composition
+ScopeConfig *-- PassiveFeatures
+ScopeConfig *-- ActiveFeatures
+ScopeConfig *-- ReconParameters
+ScopeConfig *-- NmapConfig
+ScopeConfig *-- CVEConfig
+
+' Enum usage
+Target ..> TargetType
+TargetCreate ..> TargetType
+Schedule ..> ReconMode
+ScheduleCreate ..> ReconMode
+Job ..> ReconMode
+Job ..> JobStatus
+JobCreate ..> ReconMode
+JobUpdate ..> JobStatus
+ReconParameters ..> AggressivenessProfile
+NmapConfig ..> NmapScanType
+
+@enduml

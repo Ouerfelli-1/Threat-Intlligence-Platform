@@ -47,7 +47,6 @@ data/*.db
 prompt/*
 screenshots/
 *.md
-Rapport
 # Engineering documentation suite is part of the project and IS tracked,
 # even though *.md is ignored elsewhere.
 !docs/**

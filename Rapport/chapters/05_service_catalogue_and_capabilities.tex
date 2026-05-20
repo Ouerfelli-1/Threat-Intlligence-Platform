@@ -1,0 +1,138 @@
+\chapter{Service Catalogue, Capabilities, and Utility}
+\thispagestyle{plain}
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+The system architecture chapter explained how the platform is organized structurally. This chapter answers a different question: what does each service actually do, why does it exist, and what capability would be lost if it were removed? That question matters because a microservice architecture is only justified when each service has a legible responsibility and contributes meaningfully to the overall workflow.
+
+\section{Reading the Service Layer Correctly}
+A common mistake when reading a multi-service codebase is to assume that every service is equally central or equally user-visible. In reality, the services play different roles. Some ingest external knowledge. Some expose analyst workflows. Some provide cross-cutting platform functions. Some synthesize higher-order outputs from already-collected data. The value of the platform lies not in the mere number of services, but in how these roles combine.
+
+\section{Platform Services}
+\subsection{auth}
+The auth service is the identity authority of the platform. It verifies credentials, issues RS256 access and refresh tokens, exposes role and session management, and provides the public-key material needed for request validation where auth is enforced. Its utility is foundational: without it, the platform has no coherent user identity or permission model.
+
+The main problem auth solves is centralized trust establishment. Rather than every service managing user credentials independently, one service becomes the authority for identity, sessions, and role-based access control. This reduces duplication and keeps the highest-sensitivity authentication logic localized.
+
+\subsection{secrets}
+The secrets service stores encrypted credentials and exposes controlled retrieval flows, including startup bootstrap retrieval. Its capability is not merely secret storage; it is governed secret storage with audit visibility. Without it, credentials would be dispersed across environment files and service configuration, making rotation and audit materially weaker.
+
+\subsection{scheduler}
+The scheduler owns recurring execution. It decides when jobs start, records run history, distinguishes between accepted and completed work, and receives asynchronous completion callbacks. Its utility is governance over time-dependent behaviour. Without it, recurring ingest and synthesis would either be manual or duplicated inconsistently across services.
+
+\subsection{LiteLLM gateway}
+Although not one of the fifteen business services, the LiteLLM gateway is operationally critical. It centralizes AI-provider access so that downstream services interact with one stable interface rather than many provider-specific APIs. Its utility is dependency containment, auditable AI egress, and easier model fallback.
+
+\section{Ingestion Services}
+\subsection{news-collector}
+The news-collector service ingests and stores article-style intelligence from feeds and external reporting sources. Its capability is the transformation of fast-moving narrative reporting into queryable internal knowledge. This matters because many threat developments first appear as reporting rather than as neatly structured indicators or vulnerability entries.
+
+In the project, news-collector solves the problem of analyst scatter. Instead of requiring the analyst to monitor many feed readers and research sites manually, the service creates a local article corpus that can later be summarized, searched, and cross-referenced by the synthesis layer.
+
+\subsection{vuln-intel}
+The vuln-intel service ingests CVEs and associated exploit-prioritization signals such as EPSS and KEV state. Its capability is not just storage of vulnerability records, but the creation of a vulnerability knowledge base that can be ranked against organizational context.
+
+This service exists because vulnerability information has its own source cadence, schema patterns, and analytical logic. Collapsing it into a generic ingest service would blur one of the platform's most important prioritization workflows. Without vuln-intel, the system would lose its organization-aware vulnerability ranking capability.
+
+\subsection{threat-intel}
+The threat-intel service handles broader public threat reporting, supply-chain context, and breach-related information. It occupies the space between narrowly structured technical artefacts and higher-level strategic reporting. Its utility is to capture intelligence that does not fit neatly into pure CVE, IOC, or actor categories but still matters operationally.
+
+\subsection{ioc-collector}
+The ioc-collector service ingests, normalizes, deduplicates, and serves indicator data. This is one of the most operationally important services because IOC lookup is the platform's hot path for front-line analyst triage.
+
+The core problem it solves is consistency of observable identity. An IOC is only useful in cross-source reasoning if the same underlying value maps to one canonical representation. The service therefore provides both data acquisition and normalization discipline. Without it, the platform would lose one of its most visible analyst-time-saving capabilities.
+
+\subsection{threat-actors}
+The threat-actors service maintains the platform's actor, ransomware, tool, and TTP knowledge. Its utility is durable adversary context. Many operational questions require more than an indicator verdict; they require understanding which actor families are plausible, which tools they use, and what techniques characterize them.
+
+This service solves the problem of adversary memory. Without it, actor knowledge would remain external and disconnected, forcing analysts to reconstruct context from public references repeatedly.
+
+\section{Analyst-Facing Services}
+\subsection{integrations}
+The integrations service connects the platform to operational tooling such as Wazuh and MISP. Its capability is bidirectional boundary management between the local intelligence platform and external operational systems.
+
+The service solves the problem of isolation from the existing security stack. A threat-intelligence platform that cannot interface with operational systems risks becoming a parallel workflow rather than an integrated one. Integrations keeps the platform relevant to day-to-day SOC work.
+
+\subsection{cmdb}
+The CMDB service stores assets, tags, and the company profile used by downstream prioritization and synthesis logic. Its capability is contextual grounding. It tells the rest of the platform what the organization actually is, what technologies it uses, and which exposures matter most.
+
+This service is crucial because many intelligence tasks are meaningless without local context. A CVE is not urgent simply because it exists. It becomes urgent when it intersects with real local technology and exposure. CMDB makes that intersection representable.
+
+\subsection{asm}
+The ASM service supports passive attack-surface discovery workflows. Its role is to translate the organization's external footprint into queryable internal context. This helps bridge the gap between external intelligence and the organization's actual exposed assets.
+
+Without ASM, the platform would know more about the global threat environment than about the organization's own externally visible posture. That would weaken prioritization quality.
+
+\subsection{domainwatch}
+The domainwatch service performs domain monitoring and screenshot capture. Its utility lies in tracking brand-adjacent and web-exposure changes that may indicate impersonation, typosquatting, phishing preparation, or attack-surface change.
+
+It solves a narrower but real problem: domains and hosted surfaces evolve over time, and those changes are not always captured by general vulnerability or indicator feeds.
+
+\subsection{indicator-intel}
+The indicator-intel service performs deep investigation rather than fast lookup. It gathers broader context from local and passive sources, runs investigative enrichment, and returns a richer synthesized assessment.
+
+Its utility is the separation of triage from investigation. Fast lookup and deeper investigation have different latency budgets and different information depth. By separating them, the platform supports both workflows without compromising either.
+
+\section{Synthesis Services}
+\subsection{orchestrator}
+The orchestrator is the analytical brain of the platform. It does not own raw source ingest. Instead, it gathers context from other services, performs AI-assisted synthesis, and persists higher-order outputs such as vulnerability relevance rankings, actor likelihood assessments, reports, and correlations.
+
+Its utility is cross-domain reasoning. Without the orchestrator, the platform would still collect intelligence, but much of the higher-order synthesis that differentiates it from a simple repository would disappear. The orchestrator is what transforms many domain-specific knowledge stores into one decision-support surface.
+
+\subsection{flowviz}
+The flowviz service generates attack-flow style visual representations from structured analytical inputs. Its capability is explanatory rendering: it makes analytical relationships visible in a way that is easier to consume than raw text alone.
+
+This matters because some intelligence outputs are more understandable when represented as sequence or graph structures. Flowviz therefore improves analyst comprehension and presentation quality, especially for multi-step attack reasoning.
+
+\section{How the Services Work Together}
+The services are most useful when read as a capability pipeline.
+
+Ingestion services acquire and normalize external knowledge. Analyst-facing services contribute local context and operational interfaces. Platform services provide identity, secrets, scheduling, and bounded AI access. Synthesis services transform stored context into ranked and human-usable outputs. The frontend and BFF then present those outputs as one coherent application surface.
+
+This means no single service, except perhaps auth or secrets at the control-plane level, is intended to solve the whole problem alone. The platform's value comes from composition: the right information is collected, normalized, contextualized, synthesized, and delivered through a workflow that analysts can actually use.
+
+\section{Capability Matrix by Service}
+\begin{table}[H]
+\centering
+\caption{Service utility and primary capability}
+\label{tab:service-capabilities}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{3.0cm}|p{3.8cm}|p{4.6cm}|}
+\hline
+\textbf{Service} & \textbf{Primary capability} & \textbf{Problem solved in the project}\\
+\hline
+auth & identity and RBAC & centralized trust, sessions, user permissions\\
+\hline
+secrets & encrypted secret storage & secret sprawl, weak rotation, poor auditability\\
+\hline
+scheduler & recurring execution governance & unmanaged periodic tasks and invisible job state\\
+\hline
+news-collector & article ingest & scattered narrative reporting\\
+\hline
+vuln-intel & vulnerability intelligence & generic CVE lists without local prioritization context\\
+\hline
+threat-intel & broader threat reporting & unstructured external threat context\\
+\hline
+ioc-collector & normalized indicator ingest and lookup & slow manual IOC correlation and inconsistent observables\\
+\hline
+threat-actors & actor and ransomware knowledge & missing durable adversary context\\
+\hline
+integrations & operational system bridging & disconnected TI and SIEM/sharing workflows\\
+\hline
+cmdb & local asset and profile context & lack of organization-specific relevance grounding\\
+\hline
+asm & exposure discovery & weak view of the organization's external footprint\\
+\hline
+domainwatch & domain monitoring & limited visibility into domain and brand-related exposure\\
+\hline
+indicator-intel & deep indicator investigation & shallow verdicts without contextual depth\\
+\hline
+orchestrator & AI-assisted synthesis & absence of cross-domain prioritization and reporting\\
+\hline
+flowviz & visual attack-flow generation & poor readability of multi-step analytical outputs\\
+\hline
+\end{tabular}
+\end{table}
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+Each service in the platform exists to solve a distinct but related problem. Some collect knowledge, some ground it in local context, some govern the platform, and some synthesize high-level outputs from stored intelligence. This service-level view is important because it demonstrates that the architecture is not service-heavy for its own sake. The decomposition corresponds to real capability boundaries, operational workflows, and trust concerns. With those roles now made explicit, the next chapter can return to implementation detail without forcing the reader to infer what each service is supposed to contribute.

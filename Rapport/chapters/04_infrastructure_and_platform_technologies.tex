@@ -1,0 +1,214 @@
+\chapter{Infrastructure and Platform Technologies}
+\thispagestyle{plain}
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+A reader who is not already fluent in modern web and distributed-platform tooling cannot be expected to infer the role of each technology from a deployment diagram alone. This chapter therefore explains the main infrastructural and framework choices used by the platform, the theory behind them, and the specific problem each one solves in this project. The goal is not to catalogue fashionable tools. The goal is to show why each technology exists in the architecture and what engineering pressure it relieves.
+
+\section{Containerization and Environment Reproducibility}
+\subsection{What Docker Is}
+Docker is a containerization platform that packages an application together with its runtime dependencies, entrypoint, filesystem layers, and environment assumptions into an isolated unit that can be started consistently across machines \cite{docker_docs}. A container is lighter than a full virtual machine because it shares the host kernel, but it still provides process-level and filesystem-level isolation relative to other applications.
+
+\subsection{What Problem Docker Solves in This Project}
+The platform contains fifteen backend services, a frontend, a database, a connection pooler, a cache, a LiteLLM gateway, and bootstrap containers. Without containerization, reproducing the runtime environment would require manually installing Python versions, Node tooling, system packages, database services, Redis, browser dependencies for screenshot capture, and correct environment variables on every target host. That approach is fragile and makes deployment drift likely.
+
+In this project, Docker solves three problems simultaneously. First, it makes the build and execution environment reproducible. Second, it isolates service-specific dependencies, which is important because not every service needs the same Python packages or system libraries. Third, it enables the platform to be brought up and torn down predictably as one application stack rather than as a sequence of manual operations.
+
+\subsection{Why Containerization Is Theoretically Appropriate Here}
+Containerization is especially suitable when services are largely stateless at process level but depend on externalized state such as databases, caches, and volumes. That is the case for this platform. The services can be rebuilt and restarted independently, while PostgreSQL, Redis, and persistent mounted storage preserve the durable state. This creates a clear separation between application process lifecycle and data lifecycle.
+
+\subsection{Images, Layers, and Immutability}
+One of Docker's most important theoretical ideas is immutability of runtime artefacts. A container image is built from filesystem layers. Once built and versioned, that image becomes a reproducible description of the runtime environment. This reduces the risk of configuration drift because deployment changes are expressed as new images rather than as undocumented manual edits on the host.
+
+In this project, that property is particularly valuable because the platform includes heterogeneous services with different runtime needs. Some services need browser-capable environments, others need only Python and HTTP clients, and the frontend needs a Node-based toolchain. Layered images allow each service to carry exactly the dependencies it requires while remaining reproducible.
+
+\subsection{Networks and Volumes}
+Docker also provides two abstractions that are especially relevant here: virtual networks and named volumes. Networks create controlled service-to-service communication domains. Volumes preserve state independently of container lifecycle. In the platform, networks express the private service fabric, while volumes preserve data such as PostgreSQL state, Grafana state where applicable, and generated artefacts.
+
+The theoretical value of these abstractions is that they separate communication topology and durable state from process identity. A service can be recreated without redefining either its network placement or its persisted data.
+
+\subsection{Isolation Boundaries and Their Limits}
+It is also important to explain what containers do \emph{not} solve. Docker provides process isolation, namespace separation, packaging control, and a cleaner operational boundary than unmanaged host processes. It does not provide the same isolation assumptions as a full hypervisor. Containers still share the host kernel. From a security-theory standpoint, that means containerization improves deployment hygiene and boundary clarity, but it should not be mistaken for a complete trust-separation mechanism.
+
+This distinction matters in the project because the platform is deployed on one host with many cooperating services. The security benefit of Docker here is mainly reproducibility, scoped runtime composition, and reduced dependency sprawl. Stronger hostile-tenant isolation is not the primary deployment goal.
+
+\section{Docker Compose and Single-Host Orchestration}
+\subsection{What Docker Compose Is}
+Docker Compose is a declarative orchestration tool for defining multi-container applications: images, environment variables, networks, health checks, startup dependencies, volumes, and published ports can be described in one file \cite{docker_compose_docs}. It is not a cluster orchestrator like Kubernetes. Its strength is controlled, comprehensible single-host composition.
+
+\subsection{What Problem Compose Solves in This Project}
+The project is explicitly targeted at a small team and a single-host deployment model. That means the relevant problem is not dynamic cluster scaling. It is reliable local orchestration. Compose solves the problem of coordinating many dependent services with one command surface. It ensures the same network topology, dependency ordering, environment wiring, and volume mapping are reproduced each time the stack is started.
+
+\subsection{Why Kubernetes Was Not the Right Default Choice}
+From a theoretical perspective, orchestration should match operational scale. Kubernetes would provide stronger scheduling and scaling abstractions, but it would also introduce higher operational complexity, more control-plane components, and a steeper learning burden for a team whose primary problem is intelligence workflow integration, not cluster management. Compose is therefore not a lesser version of a ``real'' architecture here; it is the architecture that best fits the actual deployment constraint.
+
+\subsection{Declarative Infrastructure and Day-Two Operations}
+Compose also has methodological value because it is declarative. The topology, health dependencies, environment wiring, volumes, and ports are written down in a machine-readable form. This matters for day-two operations because the running system can be recreated from the same description rather than from operator memory. In other words, Compose is not only a launch tool; it is part of the platform's executable documentation.
+
+\subsection{Dependency Ordering, Health Checks, and Controlled Startup}
+Single-host orchestration still has a sequencing problem. Databases must be reachable before dependent services can acquire sessions correctly. Secrets must be available before services that need bootstrap material can complete startup. Frontend routes should not become user-facing before the underlying application surfaces are minimally functional. Compose addresses part of this through dependency and health-check declarations.
+
+The broader theoretical point is that system correctness is not only about steady-state behaviour. It is also about transitional states such as startup, restart, and recovery. A platform that behaves correctly only after manual babysitting is architecturally weaker than one whose startup dependencies are expressed directly in its orchestration layer.
+
+\section{PostgreSQL as the System of Record}
+\subsection{What PostgreSQL Is}
+PostgreSQL is a relational database system with strong transactional guarantees, rich indexing, JSON support, and mature ecosystem tooling \cite{postgresql_docs}. It is appropriate when data must be queried flexibly, updated safely, and retained durably.
+
+\subsection{What Problem PostgreSQL Solves in This Project}
+The platform ingests many entity types: CVEs, EPSS entries, KEV flags, indicators, actor records, reports, sessions, notes, rules, notifications, and more. These entities are not isolated lists. They must be filtered, sorted, joined conceptually, enriched, versioned, and queried through API endpoints. PostgreSQL provides the durable store for this knowledge and allows the system to answer operational queries reliably.
+
+\subsection{Why a Relational Store Is Appropriate}
+A purely document-oriented store would preserve source payloads easily but make many cross-entity and filter-driven queries less disciplined. A graph database would model some CTI relationships elegantly but would add operational complexity and still not remove the need for transactional application data. PostgreSQL represents a practical middle ground: relational enough for operational queries and constraints, yet flexible enough through JSON columns to preserve heterogeneous upstream payloads.
+
+\subsection{ACID, Transactions, and Why They Matter Here}
+Relational databases remain especially strong when applications need transactional integrity. The classical ACID properties, atomicity, consistency, isolation, and durability, are not abstract textbook ideas in this platform. They matter because updates often affect logically related state: sessions must be created and revoked safely, scheduled job state must transition coherently, and ingest operations must either persist valid records or fail without leaving ambiguous partial state.
+
+Atomicity ensures that a multi-step write is not partially committed in a way that corrupts workflow state. Consistency ensures schema and application constraints continue to hold. Isolation matters when many services operate concurrently over shared infrastructure. Durability ensures that once a record is committed, it persists beyond process failure. These properties are one reason a relational database is so appropriate for the platform's control-plane and knowledge-store responsibilities.
+
+\subsection{MVCC and Concurrent Reads}
+PostgreSQL's multi-version concurrency control (MVCC) is also relevant conceptually. MVCC allows readers and writers to coexist with less blocking than simpler locking models. In a platform with many services, read-heavy APIs, and periodic ingest or synthesis writes, this matters because the system cannot afford for common reads to become excessively blocked by ordinary update activity. MVCC is therefore part of the reason PostgreSQL scales acceptably for this mixed read/write intelligence workload.
+
+\subsection{Indexing, Queryability, and Operational Search}
+Threat-intelligence data is only useful if it can be searched and filtered quickly. A database in this kind of system is not just archival storage. It is a live query engine. PostgreSQL's indexing capabilities, combined with relational projections of key fields, make it suitable for list views, filtered dashboards, IOC lookups, CVE retrieval, and session or rule management. This is another reason the platform favours structured relational storage for query-relevant fields while preserving upstream JSON for completeness.
+
+\subsection{Constraints as Data-Governance Mechanisms}
+Database constraints also deserve explicit attention. Primary keys, foreign keys, unique constraints, and check constraints are not mere implementation details. They are governance mechanisms that prevent invalid system states from becoming durable. In a CTI platform this matters because normalization errors, duplicate identities, malformed relationships, or orphaned records can quietly poison downstream analysis.
+
+At the thesis level, this is one of the reasons relational persistence remains attractive. The database can actively participate in preserving semantic hygiene rather than acting as a passive bag of bytes.
+
+\section{Schema Partitioning and Logical Multi-Tenancy by Service}
+The platform keeps one PostgreSQL instance but partitions ownership by schema. This means each service owns its own tables, migrations, and model evolution while still sharing one physical database process. The theory behind this choice is service isolation without unnecessary infrastructure multiplication. It preserves data ownership boundaries, reduces accidental coupling, and still fits the single-host operational model.
+
+Schema partitioning is also useful pedagogically because it exposes service ownership clearly. If every service wrote into one undifferentiated schema, it would become harder to distinguish domain boundaries, migration responsibility, and accidental data coupling. By retaining one schema per service, the platform expresses architectural ownership directly in the database itself.
+
+This design can also be seen as a compromise between strict database-per-service purity and a fully shared relational monolith. It keeps many of the organisational benefits of ownership separation while avoiding the operational cost of provisioning and backing up many independent database instances on one host.
+
+\section{PgBouncer and Connection Management}
+\subsection{What PgBouncer Is}
+PgBouncer is a lightweight PostgreSQL connection pooler that multiplexes many client-side connections onto a smaller number of backend database connections \cite{pgbouncer_docs}. This is useful when many services each maintain their own local connection pools.
+
+\subsection{What Problem PgBouncer Solves in This Project}
+With fifteen services, naive direct connection management can exhaust PostgreSQL's available connections quickly or force extremely conservative pool settings in every service. PgBouncer sits between the services and PostgreSQL so that the aggregate connection footprint remains controlled. This is especially important on a single host, where infrastructure resources are shared tightly.
+
+\subsection{Why This Matters Theoretically}
+Connection pooling is not an optimization of convenience. It is a concurrency-governance mechanism. Without it, a multi-service architecture can turn database access into a shared bottleneck or failure amplifier. PgBouncer reduces this risk and makes service scaling behaviour more predictable.
+
+It also changes client assumptions. Transaction-pooling mode means the client should not assume that one logical client session always maps to the same backend server connection. That is why prepared-statement behaviour and connection lifecycle settings matter in the implementation. The theory and the code therefore reinforce each other directly.
+
+\subsection{Why Pooling Matters on a Single Host}
+Pooling is sometimes discussed as if it matters only at very large scale. In reality, it matters even more on compact deployments because the database shares CPU, memory, and file-descriptor budgets with everything else. A single-host stack does not have much room for wasteful connection behaviour. PgBouncer therefore supports the project's core operational premise: many cooperating services must remain viable on limited infrastructure.
+
+\section{Redis as a Volatile Performance Layer}
+\subsection{What Redis Is}
+Redis is an in-memory key-value data store optimized for low-latency access to transient and rapidly changing data \cite{redis_docs}. It is often used for caching, ephemeral coordination state, rate limits, and queues.
+
+\subsection{What Problem Redis Solves in This Project}
+The most important Redis use in this platform is hot-path acceleration. IOC lookups need to return quickly enough that analysts do not abandon the interface during triage. Redis also supports source-health state, transient AI-related caching, and other volatile coordination data that would be unnecessarily expensive or noisy to recompute on every access.
+
+\subsection{Why Redis Is Not the Source of Truth}
+The project deliberately avoids making Redis authoritative. That is a sound theoretical decision. In-memory state is fast but volatile. The system of record remains PostgreSQL. Redis exists to reduce repeated latency on high-value reads and to store loss-tolerant transient state. This preserves correctness while still improving responsiveness.
+
+\subsection{Cache Semantics and Invalidation}
+Caching is often presented as universally beneficial, but it introduces its own consistency questions. A cache only improves system quality when the cost of a stale answer within a bounded window is lower than the cost of recomputing or refetching the answer on every request. In the platform, this is true for hot indicator lookups and certain transient analytical states. It would be less appropriate for every class of mutable platform state.
+
+This is why the cache is used selectively. The project does not try to hide the database behind Redis wholesale. Instead, it treats Redis as a tactical performance layer. The theory is simple but important: cache the high-frequency, loss-tolerant paths; preserve the database as the durable reference.
+
+\subsection{Redis Beyond Caching}
+Redis is often used for queues, locks, counters, and ephemeral coordination. In this platform, the main emphasis is on caching and fast volatile state rather than on making Redis the central execution bus. This is itself a design choice. It keeps Redis valuable without allowing too much business correctness to depend on an in-memory store.
+
+\subsection{Redis Data Structures and Access Patterns}
+Theoretical discussion of Redis is incomplete if it is reduced to ``a fast cache.'' Redis supports strings, hashes, sets, sorted sets, lists, expiration semantics, and lightweight atomic operations. Different workloads map naturally to different structures. In practice, the value of Redis in a platform like this is not only raw speed but also the ability to encode short-lived, high-frequency access patterns in structures optimized for that kind of workload.
+
+Even when the project uses Redis in a relatively restrained way, understanding these structures clarifies why Redis remains more than ``PostgreSQL, but in memory.'' It is a specialised tool for volatile, low-latency access patterns.
+
+\section{FastAPI and Backend API Construction}
+\subsection{What FastAPI Is}
+FastAPI is a Python web framework designed around asynchronous request handling, automatic validation through type hints and Pydantic models, and automatic OpenAPI generation \cite{fastapi_docs}. It is especially well suited to API-first services.
+
+\subsection{What Problem FastAPI Solves in This Project}
+Every backend service in the platform exposes HTTP endpoints. These endpoints need typed request handling, consistent schema validation, straightforward dependency injection, and good support for asynchronous I/O. FastAPI provides these properties while keeping service code relatively concise. This matters because the codebase contains many services and therefore benefits from a framework that reduces repetitive API plumbing.
+
+\subsection{Why API-First Design Matters Here}
+The services are coordinated over HTTP, and the frontend uses a BFF model that depends on predictable API contracts. FastAPI is therefore not just a convenience library. It supports the architectural style of the whole system by making API boundaries explicit and typed.
+
+\subsection{ASGI, Async I/O, and Concurrency}
+FastAPI's other major theoretical advantage is that it lives in the ASGI ecosystem. ASGI-based frameworks are well suited to I/O-bound services that spend much of their time waiting for network or database responses rather than saturating CPU cores. That is exactly the dominant pattern in this platform: HTTP calls to upstream sources, database queries, cache access, and inter-service communication.
+
+Asynchronous handling does not make the system magically faster in every respect, but it allows service processes to use waiting time more efficiently. In a multi-service intelligence system that performs many remote calls, this matters materially.
+
+\subsection{Dependency Injection and Route-Level Discipline}
+FastAPI also encourages explicit dependency injection at route level. This is theoretically important because it makes critical concerns such as sessions, permissions, and settings visible in the route contract rather than hidden in ambient global state. In a platform with many services and many routes, that visibility improves maintainability and reduces accidental behavioural inconsistency.
+
+\subsection{OpenAPI and Machine-Readable Contracts}
+Another major FastAPI strength is automatic OpenAPI exposure. This matters because interface clarity is not only a developer convenience. It is part of service governance. Machine-readable contracts make APIs easier to inspect, test, and reason about. In a thesis context, this is also useful conceptually: it reinforces that service boundaries are formal interfaces rather than informal agreements hidden inside code.
+
+\section{Pydantic and Schema Validation}
+Pydantic provides runtime data validation and typed model serialization on top of Python type annotations \cite{pydantic_docs}. In this project it solves two related problems. First, it validates request and response payloads, which reduces schema-shape defects across many services. Second, it provides a structured target format for AI outputs, enabling the platform to validate model responses before using them operationally. In both cases, the underlying theory is the same: typed contracts reduce ambiguity and make failures easier to detect and localize.
+
+Pydantic also supports a useful conceptual unification. The same general modelling discipline can be used at the browser/API boundary, at the service/database boundary, and at the AI/application boundary. This reduces the number of ad hoc data-shape assumptions that the system has to carry.
+
+This is especially valuable for AI-assisted workflows. Large language models can produce syntactically plausible but structurally invalid outputs. Treating AI output as untyped free text would make downstream automation fragile. Pydantic helps turn AI assistance into schema-governed augmentation rather than unchecked generation.
+
+\section{SQLAlchemy and Async Persistence}
+SQLAlchemy is the data-access toolkit used by the platform's services \cite{sqlalchemy_docs}. It provides async database sessions, transaction handling, ORM models, and lower-level query support when needed. The key problem it solves here is uniform persistence across many services. Rather than each service inventing its own data-access layer, the platform uses a shared and well-understood abstraction. This improves consistency and reduces accidental implementation variance.
+
+At a theoretical level, an ORM or persistence toolkit is most useful when it standardizes the common parts of data access without hiding so much that correctness becomes opaque. In this platform, SQLAlchemy plays that middle role. It provides model mapping and session handling while still allowing the developer to reason clearly about transactions and query structure.
+
+It also addresses a common multi-service risk: persistence drift. When each service develops its own hand-rolled approach to sessions, retries, error mapping, and model mapping, the platform gradually loses behavioural consistency. SQLAlchemy, especially when paired with shared factories and conventions, helps keep the persistence layer intelligible across the service estate.
+
+\section{Next.js and the Frontend Edge}
+\subsection{What Next.js Is}
+Next.js is a React-based application framework that supports both frontend rendering and server-side route handling \cite{nextjs_docs}. In this project it is used not only for the user interface but also for the backend-for-frontend proxy layer.
+
+\subsection{What Problem Next.js Solves in This Project}
+The platform needs one browser-facing edge that can aggregate backend responses, stabilize routing, and hide internal service topology from the browser. Next.js solves this by allowing the frontend to host the BFF API routes alongside the UI. This is why the frontend is not merely a static client. It is part of the platform's trust and composition model.
+
+\subsection{Why the BFF Matters Theoretically}
+The BFF pattern is especially useful when the natural backend domain decomposition does not match the natural page or workflow decomposition of the frontend. That is exactly the case here. A dashboard needs information from several services. So do administrative panels and intelligence-overview screens. Rather than weakening backend service ownership by forcing each service to emit page-shaped payloads, the BFF composes them at the edge.
+
+\subsection{Client State, Server Routes, and Hybrid Application Design}
+Next.js also supports a hybrid design in which some logic remains server-side and some remains client-side. This is well suited to the platform because authentication-aware routing, API proxying, and user-interface state persistence do not all belong in the same execution context. The framework therefore supports the architectural reality that the frontend is both user interface and edge logic.
+
+\subsection{Why This Improves Security Posture}
+The BFF edge also contributes to security posture. If the browser had to know the full internal topology of backend services and negotiate directly with all of them, the exposed surface would be larger and frontend code would carry more infrastructure knowledge. By centralizing the browser-facing edge, the project reduces that exposure and keeps more control over request shaping, header handling, and route normalization.
+
+\section{LiteLLM as AI Gateway}
+\subsection{What LiteLLM Is}
+LiteLLM is a gateway and abstraction layer that exposes multiple LLM providers through a largely uniform interface \cite{litellm_docs}. It can centralize model routing, provider credentials, fallbacks, and access patterns.
+
+\subsection{What Problem LiteLLM Solves in This Project}
+The project relies on AI-assisted synthesis, but it does not want every service to carry provider-specific SDK logic and secret material. LiteLLM solves that problem by acting as one gateway through which AI-enabled services communicate. This creates one auditable AI egress and centralizes provider management.
+
+\subsection{Why This Matters Architecturally}
+The theoretical value of an AI gateway is not only convenience. It is dependency containment. AI providers are volatile dependencies with rate limits, quota failures, and behavioural drift. A gateway prevents those concerns from leaking into every service independently.
+
+The gateway also has governance value. It becomes the single place where provider credentials, fallback ordering, and AI-related observability can be controlled. That is a much stronger design than distributing AI provider secrets and behaviour across many services.
+
+It also creates a stronger abstraction boundary around model choice. Services can ask for a capability or a structured completion path without being tightly coupled to one provider's SDK, request shape, or authentication pattern. That preserves architectural freedom if AI usage evolves later.
+
+\section{APScheduler and Recurring Execution}
+APScheduler is a task scheduling library used by the scheduler service to manage recurring jobs \cite{apscheduler_docs}. It solves the problem of controlled, inspectable recurring execution: intelligence feeds need refreshing, synthesis tasks need periodic runs, and some workflows must happen without manual invocation. In this project, scheduling is centralized because recurring execution is part of platform governance, not a hidden responsibility that each service should implement for itself.
+
+Scheduling theory matters here because ``something should run every so often'' is not enough. A schedulable platform also needs visibility into whether the work actually ran, whether it finished, and what happened when it did not. That is why the scheduler is treated as a first-class service rather than as an invisible helper thread in each component.
+
+Another important issue is idempotence. Recurring jobs can overlap, fail midway, or be retried after partial completion. A serious scheduling design therefore has to consider whether a repeated trigger is safe and what state transitions mark a run as started, succeeded, timed out, or failed. The platform's explicit run history and callback model are part of that reasoning.
+
+\section{Secrets Management, Fernet, and Bootstrap Security}
+The platform's secrets service encrypts secrets at rest using Fernet and exposes bootstrap-aware retrieval flows. The underlying problem is credential sprawl. Without a central vault, each service would require separate local secret handling, increasing duplication and audit difficulty. The vault model reduces this sprawl and supports explicit access logging. The bootstrap token and master encryption key remain exceptional because they solve the startup trust problem: something outside the vault must exist in order to unlock the vault.
+
+The key theoretical issue here is bootstrap trust. Many designs speak of central secret storage as if it could emerge from nowhere. In reality, every vault has a trust root outside itself. The project's explicit handling of the bootstrap token and encryption key reflects that unavoidable fact rather than obscuring it.
+
+\section{HTTPX and External Source Integration}
+Although less visible at the document level, outbound source access depends on a resilient HTTP client layer. HTTPX provides the asynchronous HTTP primitives for source calls \cite{httpx_docs}. The project builds on that client layer with retry, timeout, and circuit-breaker semantics because remote calls in intelligence systems are normal failure boundaries, not simple library calls.
+
+This is especially important in CTI systems because the platform's informational value depends on many dependencies it does not control. Robust outbound HTTP behaviour is therefore not peripheral infrastructure. It is central to platform reliability.
+
+Timeouts, retries, and circuit breakers each solve a different failure mode. Timeouts bound waiting. Retries address transient transport or upstream instability. Circuit breakers prevent one failing dependency from consuming disproportionate execution budget over and over again. Together, they turn external-source access from hopeful best-effort code into governed remote interaction.
+
+\section{Why These Technologies Form a Coherent Stack}
+The platform stack is coherent because each layer answers a different engineering question. Docker and Compose answer how the system is packaged and run. PostgreSQL and PgBouncer answer how durable data is stored and how concurrency is governed. Redis answers how hot-path latency is reduced without compromising durable correctness. FastAPI, Pydantic, and SQLAlchemy answer how services expose and validate API-driven domain logic. Next.js answers how the browser edge is stabilized. LiteLLM answers how AI capability is centralized and bounded. APScheduler answers how recurring work is owned and made observable.
+
+The important academic point is that these technologies are not interchangeable decoration. Their roles correspond directly to the platform's quality requirements: reproducibility, operability, bounded trust, low triage latency, structured contracts, and resilience under partial failure.
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+This chapter clarified the infrastructural and framework choices that make the platform viable. Docker and Compose provide reproducible multi-service operation. PostgreSQL and PgBouncer provide durable, governable persistence. Redis accelerates volatile hot-path state. FastAPI, Pydantic, and SQLAlchemy provide typed service construction. Next.js provides the browser-facing edge and BFF composition layer. LiteLLM centralizes AI access. APScheduler centralizes recurring work. Each technology is justified not by trend, but by the specific problem it solves inside this project. The next chapter shifts from platform technologies to the service layer itself and explains the role, utility, and capability of every service in the delivered system.

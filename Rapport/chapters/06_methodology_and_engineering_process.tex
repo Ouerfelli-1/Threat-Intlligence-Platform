@@ -1,0 +1,73 @@
+\chapter{Methodology and Engineering Process}
+\thispagestyle{plain}
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+A mature engineering thesis must explain not only what was built, but how the work was carried out, how decisions were made, and how claims were grounded. This chapter therefore describes the methodology used to study the problem, derive requirements, analyse the repository, structure the implementation effort, and validate the resulting platform. The emphasis is on engineering method rather than on software-development ritual for its own sake.
+
+\section{Nature of the Project}
+The project is best understood as an applied software-engineering and security-engineering study. It is not a purely algorithmic research contribution, nor a purely descriptive internship report. Its core objective is to design, implement, and justify a self-hosted Threat Intelligence Platform under realistic operational constraints. The work therefore combines problem analysis, systems architecture, full-stack implementation, security design, infrastructure engineering, and operational validation.
+
+From a methodological standpoint, this places the project in the family of design-and-build engineering artefacts. The contribution is embodied in a working system and in the reasoning that connects the system to its problem context. The artefact is not just a demonstration object; it is the primary means by which the research question is answered. That question can be formulated as follows: how can a small security team be given a self-hosted platform that reduces the cost of cross-source threat-intelligence correlation while preserving operability, contextual prioritization, and bounded AI usage?
+
+\section{Methodological Posture}
+The report adopts a code-grounded, evidence-driven methodology. This means the implementation repository, deployment definitions, runtime configuration, screenshots, rendered diagrams, and service interactions are treated as primary artefacts. Internal design notes and engineering documentation are used as supporting evidence, but not as substitutes for code. External standards and threat reports provide theoretical and environmental context, but they do not define the platform's actual behaviour.
+
+This posture was chosen deliberately. A common failure mode in student reports is narrative inflation: the text gradually begins to describe the intended system rather than the delivered one. By grounding the thesis in the repository and verified runtime topology, the report reduces that risk. The resulting argument is narrower, but more defensible.
+
+\section{Problem Analysis Method}
+The problem analysis phase combined three evidence streams.
+
+The first stream was operational context. The target environment was characterized by small-team staffing, self-hosting preference, limited tolerance for uncontrolled data egress, and a need to bridge tactical analyst workflows with management-facing reporting. The second stream was external threat pressure. Recent threat reporting was used to establish that attack speed, identity compromise, supply-chain abuse, and AI-amplified offensive workflows materially affect the way security teams must prioritize their effort. The third stream was solution-space analysis. Existing alternatives such as commercial TIPs, OpenCTI, MISP, SIEM-native intelligence, and point-tool workflows were examined to identify what gap remained unserved.
+
+The combination of these three streams was important. Operational context alone would explain local constraints but not broader urgency. Threat pressure alone would justify the domain but not the chosen system shape. Alternative analysis alone would position the project but not prove its necessity. Together, they provided the basis for the requirements that follow in later chapters.
+
+\section{Repository Reverse-Engineering Method}
+Because the report is grounded in the delivered platform, repository analysis became a core methodological activity. The reverse-engineering process proceeded through several layers.
+
+First, the infrastructure layer was analysed through Docker Compose, bootstrap scripts, environment structure, and service startup order. This established the actual runtime topology, trust boundaries, and dependency graph. Second, the service layer was analysed through shared factories, startup hooks, routers, models, and service-specific settings. This established how each service is constructed and what responsibility it owns. Third, the frontend layer was analysed through the App Router, BFF proxy, client-side store, typed API client, and screenshots. This established how backend capabilities are exposed to users. Fourth, the data layer was analysed through schemas, models, migrations, and entity relationships. This established what knowledge is persisted and how it is partitioned.
+
+This reverse-engineering method was iterative rather than strictly linear. Findings at one layer often forced reinterpretation of assumptions made at another. For example, the frontend auth store and BFF logic were required to correct inaccurate earlier claims about HTTP-only token handling. Similarly, the Compose file was required to correct overly simplified claims about externally exposed surfaces and internal auth enforcement.
+
+\section{Requirements Derivation Process}
+Requirements were derived from the intersection of stakeholder needs, environmental constraints, and code-backed design goals. This was not a formal requirements workshop in the industrial sense. Instead, the derivation process followed four steps.
+
+First, stakeholder roles were identified from the repository and project framing: SOC analyst, threat-intelligence analyst, and security manager. Second, recurring pains were extracted from the problem statement and comparative analysis: fragmented tooling, slow cross-source correlation, weak contextual prioritization, and a lack of integrated synthesis. Third, enabling and constraining conditions were identified from the intended deployment profile: single-host operation, self-hosting, bounded AI egress, and small-team operability. Fourth, these pressures were translated into explicit functional and non-functional requirements.
+
+This process produced a requirement set that is both pragmatic and traceable. It explains why some seemingly secondary features, such as source health, company profile, or scheduler callbacks, are actually central to system quality.
+
+\section{Architecture Design Method}
+The architecture was not chosen in one step. It emerged from the progressive elimination of less suitable alternatives.
+
+A monolithic architecture was considered too coarse for the number of external intelligence domains and the desire for explicit domain ownership. A heavily event-driven design was considered too operationally expensive for the target deployment. A database-per-service design was considered overly costly in the single-host setting. A SaaS-heavy architecture was incompatible with the self-hosting and controlled-egress objectives.
+
+The adopted architecture can therefore be understood as the result of a constrained optimization process. The design favours bounded service ownership, one shared but partitioned database, HTTP-based coordination, central platform services for secrets/auth/scheduling, a BFF edge, and an isolated AI gateway. Each of these choices is easier to justify once the discarded alternatives are made visible.
+
+\section{Implementation Strategy}
+The implementation strategy followed a layered build order rather than a feature-only order.
+
+The first layer was the shared platform foundation: service construction, logging, settings, error handling, correlation IDs, auth bootstrap, secrets access, and database/session helpers. This layer reduced accidental complexity and made the rest of the service portfolio cheaper to implement consistently.
+
+The second layer was the platform infrastructure: PostgreSQL, PgBouncer, Redis, Docker images, Compose topology, migrations, and seed/bootstrap scripts. Without this layer, service-level code would remain difficult to run or validate coherently.
+
+The third layer was the domain service portfolio: ingestion services, analyst-facing services, and synthesis services. These were implemented as bounded vertical slices. The fourth layer was the frontend and BFF integration. The fifth layer was operational hardening in the limited sense achievable within the project scope: health endpoints, smoke checks, screenshots, and validation scripts.
+
+This layered implementation order is significant because it reflects an engineering principle: cross-cutting scaffolding should be stabilized before domain proliferation. Otherwise, the codebase accumulates duplicated infrastructure logic that later becomes difficult to unify.
+
+\section{Diagramming and Documentation Process}
+The diagrams used in the report were produced from Mermaid and PlantUML sources, then rendered into report-compatible images. This matters methodologically because the diagrams are not static decorative assets copied from external tools. They are part of the repository-based evidence set. The diagramming process also revealed an important practical lesson: diagrams suitable for a development workspace are not always suitable for printed thesis pages. Some had to be cropped or split into smaller figures to preserve readability in the final manuscript.
+
+The documentation process followed a similar principle. Internal engineering documentation was treated as a structured intermediate layer between code and thesis prose. It helped surface design goals, limitations, and architectural claims, but those claims were checked against implementation artefacts before being promoted into the report.
+
+\section{Validation Strategy}
+Validation was multi-layered and intentionally honest. The project does not present a strong conventional unit/integration test suite, so it cannot claim that kind of verification depth. Instead, validation was built from static analysis, live-stack bring-up, smoke testing, browser walkthroughs, screenshot evidence, code-grounded architecture inspection, and consistency checks between documentation and implementation.
+
+This validation strategy is weaker than production-grade CI-backed engineering maturity, but it is still meaningful. It is especially relevant in a system where many important properties concern deployment topology, startup sequencing, API shape, and UI-level workflow composition rather than only isolated pure functions.
+
+\section{Limits of the Methodology}
+The methodology also has clear limitations. Because the work is grounded in one implementation repository and one deployment model, some conclusions are context-specific rather than universally generalizable. Because the platform was developed under PFE-scale time and staffing constraints, some engineering maturity layers, especially broad automated testing and formal benchmarking, remain incomplete. Because the report depends heavily on reverse engineering of the final artefact, some design rationale must be reconstructed from code and surrounding notes rather than from a single formal design dossier written upfront.
+
+These limitations do not invalidate the report, but they do shape its scope. The thesis is strongest when explaining this system, this operating model, and this class of engineering tradeoff. It is weaker as a universal claim about all possible TIP architectures.
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+The methodology of the project is best described as code-grounded engineering research. The work began with operational context, threat pressure, and alternative analysis; it proceeded through repository reverse engineering, requirement derivation, constrained architectural choice, layered implementation, and multi-layer validation; and it remained intentionally honest about both evidence and limitations. This methodological clarity matters because the value of the thesis lies not only in the delivered platform, but in the defensible chain of reasoning that connects the platform to the problem it solves.

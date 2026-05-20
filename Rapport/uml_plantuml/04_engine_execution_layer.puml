@@ -1,0 +1,116 @@
+@startuml Engine Execution Layer
+
+left to right direction
+skinparam linetype ortho
+skinparam componentStyle uml2
+
+' ==================== TRIGGER SOURCES ====================
+
+package "Trigger Sources" as triggers {
+  component [Manager API\nJobService] as API
+  component [SchedulerService\nAPScheduler] as Scheduler
+}
+
+' ==================== MESSAGE QUEUE ====================
+
+package "Message Queue" as queue {
+  queue "Redis\nrecon_jobs" as Redis
+}
+
+' ==================== ENGINE WORKER ====================
+
+package "Engine Worker\nengine/worker.py" as engine {
+  component [ReconWorker] as Worker
+  
+  component [run()\nMain Loop] as RunLoop
+  component [execute_job()\nJob Orchestrator] as ExecJob
+  component [run_passive_recon()] as PassiveRecon
+  component [run_active_recon()] as ActiveRecon
+  
+  ' Save methods
+  component [save_*_finding()\nPersistence] as SaveFindings
+}
+
+' ==================== RECON MODULES ====================
+
+package "Recon Modules\nengine/modules/" as modules {
+  component [SubdomainEnumerator\nsubdomain_enum.py] as SubEnum
+  component [DNSEnumerator\ndns_enum.py] as DNSEnum
+  component [CertificateEnumerator\ncert_enum.py] as CertEnum
+  component [ShodanEnumerator\nshodan_enum.py] as ShodanEnum
+  component [NmapEnumerator\nnmap_enum.py] as NmapEnum
+  component [CVELookup\ncve_lookup.py] as CVELookup
+}
+
+' ==================== DATA RESULTS ====================
+
+package "Results" as results {
+  class CVEResult <<dataclass>> {
+    cve_id: str
+    severity: str
+    cvss_score: float
+    description: str
+  }
+}
+
+' ==================== PERSISTENCE ====================
+
+package "Persistence" as persistence {
+  database "PostgreSQL\nTimescaleDB" as PG
+}
+
+' ==================== EXTERNAL APIS ====================
+
+package "External APIs" as external {
+  cloud "crt.sh" as CrtSh
+  cloud "Shodan API" as ShodanAPI
+  cloud "NVD API" as NVDAPI
+  cloud "HackerTarget" as HackerTarget
+}
+
+' ==================== TRIGGER FLOW ====================
+
+API --> Redis : lpush\njob_json
+Scheduler --> Redis : lpush\njob_json
+Redis --> Worker : brpop
+
+' ==================== WORKER INTERNAL FLOW ====================
+
+Worker --> RunLoop : starts
+RunLoop --> ExecJob : on job received
+ExecJob --> PassiveRecon : mode=passive
+ExecJob --> ActiveRecon : mode=active
+
+' ==================== PASSIVE RECON FLOW ====================
+
+PassiveRecon --> SubEnum : enumerate
+PassiveRecon --> DNSEnum : _query_domain
+PassiveRecon --> CertEnum : enumerate
+PassiveRecon --> ShodanEnum : enumerate
+
+' ==================== ACTIVE RECON FLOW ====================
+
+ActiveRecon --> NmapEnum : enumerate
+NmapEnum --> CVELookup : search
+
+' ==================== MODULE → EXTERNAL ====================
+
+SubEnum --> CrtSh
+SubEnum --> HackerTarget
+CertEnum --> CrtSh
+ShodanEnum --> ShodanAPI
+CVELookup --> NVDAPI
+
+' ==================== RESULTS ====================
+
+CVELookup ..> CVEResult : returns
+
+' ==================== PERSISTENCE FLOW ====================
+
+PassiveRecon --> SaveFindings
+ActiveRecon --> SaveFindings
+SaveFindings --> PG : INSERT\nrecon_findings
+
+ExecJob --> PG : UPDATE\njobs.status
+
+@enduml

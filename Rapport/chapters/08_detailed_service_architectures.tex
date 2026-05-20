@@ -1,0 +1,183 @@
+\chapter{Detailed Service Architectures}
+\thispagestyle{plain}
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+The previous service-catalogue chapter established what each service is for. This chapter goes deeper: it explains how each service is architected internally, what inputs it consumes, what state it owns, what outputs it exposes, and how it contributes to the wider execution model. The aim is to make every service legible to a reader who did not build the system.
+
+\section{A Common Architectural Template}
+Although the services differ in responsibility, they share one structural template. Each service is built from a common factory, exposes health and domain routes, obtains required runtime dependencies during startup, and then serves either read-heavy, write-heavy, ingest-heavy, or synthesis-heavy workloads. This template reduces accidental variation. What differs from service to service is the domain logic, dependency set, and data ownership.
+
+\section{Control-Plane Services}
+\subsection{auth Architecture}
+The auth service contains four architectural concerns: credential verification, token issuance, role and permission modelling, and session lifecycle management. Its inbound surface consists of login, refresh, profile, and administrative identity routes. Its owned state includes users, roles, sessions, service accounts, and audit records. Its outbound dependencies are limited compared with many other services: it needs the database, the secrets service for key material at startup, and the surrounding platform for network reachability.
+
+Architecturally, auth is intentionally more security-dense than the average service. It is the issuer of trust artefacts for the rest of the platform. This is why it remains a distinct service rather than being folded into the frontend or shared platform code. It creates a clean trust anchor that the rest of the system can reason about.
+
+Its internal flow can be described as a credential-to-claim pipeline. Credentials arrive, are checked against stored identity material, authorization context is assembled from roles and permissions, tokens are issued with bounded lifetime, and session state is recorded for later revocation or audit. This pipeline matters because authentication is not a single boolean decision. It is a sequence of transformations from user-supplied proof to platform-usable trust claims.
+
+\subsection{secrets Architecture}
+The secrets service is structured around encrypted persistence, controlled read/write flows, bootstrap-aware access, and access logging. Its inbound surface contains both ordinary vault operations and the special bootstrap retrieval path. Its owned state is highly sensitive: encrypted secret values and access audit trails. Its core internal logic revolves around decrypt-on-read, encrypt-on-write, authorization policy, and traceability.
+
+Architecturally, secrets is a platform-local security boundary. The rest of the system depends on it for startup and for the controlled concentration of sensitive material. That makes its design less about UI or domain richness and more about minimal trusted responsibility.
+
+The service also expresses a clear separation between secret custody and secret use. Most services need to consume credentials, but they should not become long-term stores of those credentials. The secrets service centralizes custody so that the rest of the platform can remain dependent consumers rather than proliferating vault logic everywhere.
+
+\subsection{scheduler Architecture}
+The scheduler service is organized around job definitions, run history, trigger dispatch, callback completion, and timeout/watchdog logic. It receives scheduled time as its main input, translates that into HTTP-triggered work, and records lifecycle state. Its owned data includes jobs, schedules, and run history. Its main outbound dependencies are the services it triggers.
+
+The scheduler solves a coordination problem rather than a data-modelling problem. Its value lies in being the authoritative owner of recurring execution state. That is why callback semantics and watchdog behaviour matter so much to its architecture.
+
+Internally, it behaves like a small control system. It decides when work becomes eligible, dispatches that work outward, waits for acknowledgements or completions, and records enough state to classify the result. This makes it different from a simple cron-like launcher. It owns execution accountability, not just timing.
+
+\section{Ingestion-Service Architectures}
+\subsection{news-collector Architecture}
+The news-collector service is architected as a source-ingest and article-persistence pipeline. It reads from configured feeds, normalizes article metadata, stores article records, and exposes article list/detail views for downstream consumption. Its owned state is primarily articles and any supporting enrichment or analyst-facing metadata tied to them.
+
+Its internal architecture emphasizes source diversity and partial failure handling. Different feeds can fail independently without collapsing the article corpus. This makes news-collector a classic ingest service: many external dependencies, one internal representation, and read-oriented downstream usage.
+
+The important architectural move is normalization before persistence. External feeds often disagree on fields, timestamps, and structure. By translating them into one local article model, the service makes downstream querying and synthesis possible without forcing every consumer to understand every upstream variant.
+
+\subsection{vuln-intel Architecture}
+The vuln-intel service is organized around vulnerability acquisition, exploit-likelihood enrichment, known-exploited enrichment, persistence, and query exposure. It receives structured vulnerability feeds and transforms them into one internal vulnerability domain. Its owned state includes CVEs, EPSS, KEV relationships, notes, and relevance-related outputs.
+
+Architecturally, vuln-intel is one of the most important enrichment services because its outputs feed both direct analyst workflows and orchestrator synthesis. It sits at the boundary between raw external disclosure and contextual prioritization.
+
+Its internal flow is additive rather than merely ingestive. A CVE record is not only stored; it is linked to exploit-likelihood evidence, to known-exploitation status where applicable, and to analyst-usable context. This is what turns a disclosure feed into a prioritization service.
+
+\subsection{threat-intel Architecture}
+The threat-intel service collects broader reporting related to breaches, supply-chain incidents, and strategic threat developments. It is less rigidly structured than vuln-intel or ioc-collector because its sources are semantically broader. That means its architecture relies more on transformation and categorization than on one tightly typed source format.
+
+Its main utility architecturally is to keep non-CVE, non-IOC, non-actor threat knowledge inside the same platform rather than leaving it in disconnected research workflows.
+
+This broader semantic scope means classification quality matters as much as transport reliability. The service has to translate heterogeneous narrative reporting into categories that remain usable by the rest of the platform without pretending that all such reporting is as structurally clean as vulnerability data.
+
+\subsection{ioc-collector Architecture}
+The ioc-collector service combines ingest and low-latency serving. Internally, it is structured around indicator normalization, deduplication, source corroboration, persistence, and cache-aware lookup. Its inbound inputs are indicator-bearing sources. Its outbound value is primarily the IOC lookup path and any stored indicator intelligence consumed by other services.
+
+The architectural tension inside ioc-collector is between ingest completeness and lookup speed. The service must normalize and store indicators carefully, but it must also expose them fast enough for operational triage. That is why it is coupled more tightly than many other services to Redis and to canonical identity logic.
+
+Its most important internal architectural idea is canonicalization. If one IP address, domain, URL, or hash can appear in slightly different syntactic forms across sources, the service must reduce those forms to stable local identity. Without that, corroboration becomes unreliable and caching becomes wasteful.
+
+\subsection{threat-actors Architecture}
+The threat-actors service owns adversary-centric knowledge: actors, TTP relationships, tools, ransomware groups, and related profiles. Its architecture revolves around durable adversary modelling rather than high-frequency lookup. It ingests or curates actor-related intelligence and exposes it in forms useful both to analysts and to the orchestrator.
+
+This service is important architecturally because it holds the behavioural memory of the platform. Without it, actor-related synthesis would depend too heavily on transient external lookups.
+
+It therefore plays a knowledge-consolidation role. Where other services focus on current events or direct observables, threat-actors maintains the longer-lived behavioural entities that allow current observations to be interpreted in relation to recurring adversaries.
+
+\section{Analyst-Facing Service Architectures}
+\subsection{integrations Architecture}
+The integrations service acts as a controlled edge between the local platform and operational systems such as Wazuh and MISP. Internally, it must manage external credentials, mapping between external and local entities, and read or write flows that keep the rest of the platform insulated from integration-specific details.
+
+Its architectural value lies in anti-corruption. Other services should not need to understand Wazuh-specific or MISP-specific mechanics. Integrations absorbs that complexity and exposes a local platform-facing interface.
+
+This means the service is architecturally adapter-heavy. Much of its value lies not in owning rich internal business state, but in translating identity, payload shape, and workflow meaning across system boundaries.
+
+\subsection{cmdb Architecture}
+The CMDB service is organized around asset inventory, tagging, organization profile, and local context modelling. It owns state that is not directly imported from threat feeds but is necessary to interpret them. Its outputs are therefore disproportionately important relative to its apparent simplicity.
+
+Architecturally, CMDB is the service that gives the platform local referential meaning. It turns a generic intelligence platform into an organization-aware intelligence platform.
+
+Its core architectural role is contextual anchoring. Threat intelligence without local asset context remains informative but not decisional. The CMDB closes that gap by defining what the organization actually has, how it is classified, and therefore why certain findings should matter more than others.
+
+\subsection{asm Architecture}
+The ASM service is oriented around discovery of external-facing organizational surface. It combines external lookup logic with local persistence of discovered assets, scopes, or exposure-related artefacts. It complements CMDB by keeping the local asset view tied to observable external footprint rather than only declared inventory.
+
+This produces a useful architectural tension with CMDB: one service describes intended or known internal context, while the other describes what can be externally observed. That tension is valuable because discrepancies between declared and observed surface are often themselves security-relevant.
+
+\subsection{domainwatch Architecture}
+Domainwatch is organized around monitored domain entities, change detection, screenshot capture, and persistence of observed state. Its architecture mixes scheduled execution with observation persistence and read-facing analyst workflows. It is narrower than ASM but deeper on one exposure type: domain-visible surface.
+
+Architecturally, domainwatch is an example of a vertical service. It goes deep on one category of external signal instead of trying to become a generic discovery engine. That focus keeps its data model and execution model coherent.
+
+\subsection{indicator-intel Architecture}
+Indicator-intel is architected as an investigative rather than ingest-heavy service. It takes a candidate indicator, fans out across passive or locally stored sources, performs deeper enrichment, and returns a synthesized result. It therefore has more orchestration character than ioc-collector, even though both operate in the indicator domain.
+
+Architecturally, it exists to protect the fast path from becoming the deep path. It keeps slow, context-rich enrichment from contaminating the latency expectations of basic lookup.
+
+Its internal flow is therefore deliberately fan-out then synthesize: gather broader context, normalize returned evidence, weigh that evidence into an investigation result, and expose the result without forcing the IOC lookup surface to inherit that cost.
+
+\section{Synthesis-Service Architectures}
+\subsection{orchestrator Architecture}
+The orchestrator has the most cross-domain architecture in the platform. It consumes context from many services, assembles analytical prompt context, requests structured model outputs through the AI gateway, validates them, and persists results such as actor likelihood, vulnerability relevance, correlations, and reports.
+
+Its internal architecture can be thought of as a staged synthesis pipeline. Each stage consumes a specific slice of already-ingested knowledge, transforms it into a structured analysis request, validates the returned structure, and writes durable output. This staged structure matters because it allows partial analytical success and localized failure handling.
+
+The orchestrator is also where the distinction between information access and decision support becomes most visible. It does not primarily store raw intelligence. It produces judgment-support artefacts from it.
+
+That makes the orchestrator the platform's main semantic transformation engine. Most other services move or normalize data. The orchestrator interprets it, ranks it, correlates it, and emits higher-level analytical products. Its architecture therefore has to be more defensive around input quality, validation, and partial failure than a conventional CRUD service.
+
+\subsection{flowviz Architecture}
+Flowviz is built around transformation from structured analytical content into renderable attack-flow representations. Its architecture is simpler than that of the orchestrator but still significant. It provides a specialized explanatory capability that other services would be poorly structured to own.
+
+Its deeper architectural role is representational specialization. Instead of forcing every analytical service to understand how to generate human-legible flow diagrams, the platform isolates that concern in one service dedicated to transforming structured attack information into visual narrative form.
+
+\section{Cross-Service Architectural Patterns}
+Several architectural patterns recur across all services.
+
+The first is startup-based dependency acquisition. Services initialize engines, caches, secrets, and optional AI or source-health clients before serving requests. The second is explicit data ownership. Services own their schemas and do not query each other's tables directly. The third is HTTP-based cooperation. Cross-service interaction occurs through APIs rather than implicit shared persistence. The fourth is bounded optional capability. Only services that need AI, source health, or specific integrations acquire those capabilities. The fifth is graceful degradation. Services are expected to survive partial dependency failure where possible.
+
+These patterns are what make the service portfolio feel like one engineered system rather than many unrelated applications.
+
+Another recurring pattern is asymmetry of criticality. Not every service is equally central. Auth, secrets, scheduler, vuln-intel, ioc-collector, cmdb, and orchestrator carry different classes of architectural weight. This asymmetry is healthy when understood explicitly because it helps explain where redundancy, hardening, and operational attention would matter most in future production evolution.
+
+\section{Per-Service Architecture Matrix}
+To make the service layer fully legible, Table~\ref{tab:service-architecture-matrix} summarizes each service through the same four architectural lenses: primary inputs, owned state, principal outputs, and failure impact.
+
+\begin{table}[H]
+\centering
+\caption{Per-service architectural reading}
+\label{tab:service-architecture-matrix}
+\renewcommand{\arraystretch}{1.18}
+\begin{tabular}{|p{2.4cm}|p{3.0cm}|p{3.0cm}|p{2.9cm}|p{2.1cm}|}
+\hline
+\textbf{Service} & \textbf{Primary inputs} & \textbf{Owned state} & \textbf{Primary outputs} & \textbf{Failure impact}\\
+\hline
+auth & login credentials, refresh requests, admin identity actions & users, roles, sessions, service accounts & JWTs, user profiles, role/session administration & high at trust boundary\\
+\hline
+secrets & secret write/read requests, bootstrap retrieval requests & encrypted secret values, access logs & decrypted secrets, metadata, audit trail & high at startup and key access\\
+\hline
+scheduler & clock time, job definitions, completion callbacks & schedules, run history, timeout state & trigger calls, run-state visibility & medium to high on automation cadence\\
+\hline
+news-collector & RSS/Atom and article-like feeds & article corpus and related metadata & article APIs, source article base for synthesis & medium on narrative freshness\\
+\hline
+vuln-intel & CVE, EPSS, KEV sources & vulnerability corpus, exploitability context & CVE APIs, relevance inputs to orchestrator & high on prioritization quality\\
+\hline
+threat-intel & breach, supply-chain, strategic reporting sources & broader threat records & threat-reporting APIs and synthesis context & medium on strategic context\\
+\hline
+ioc-collector & indicator-bearing feeds and lookups & normalized indicators, corroboration state & fast IOC verdicts, stored indicator data & high on triage speed\\
+\hline
+threat-actors & actor, ransomware, TTP-oriented sources & actor profiles, tools, TTP relationships & actor APIs and ranking context & medium to high on adversary context\\
+\hline
+integrations & Wazuh/MISP interactions, integration credentials & integration mappings and fetched external operational state & operational enrichments and bridge workflows & medium on ecosystem connectivity\\
+\hline
+cmdb & asset and organization-profile edits & assets, tags, company profile & context APIs for relevance and ranking & high on contextual correctness\\
+\hline
+asm & scope definitions and passive-discovery logic & discovered external surface state & ASM views and contextual exposure inputs & medium on exposure awareness\\
+\hline
+domainwatch & monitored domain set, screenshot or watch jobs & monitored domain state, visual/domain observations & domain monitoring views and alerts & medium on domain-risk visibility\\
+\hline
+indicator-intel & investigation requests for specific indicators & persisted investigation results where applicable & deep investigative assessments & low to medium on deep-analysis richness\\
+\hline
+orchestrator & stored context from many services, AI requests & reports, rankings, correlations, policies & synthesized intelligence outputs & high on strategic analytical value\\
+\hline
+flowviz & structured attack-flow inputs & generated flow representations and metadata & visual attack-flow outputs & low to medium on explainability\\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Per-Service Failure Modes and Containment}
+A useful way to understand architecture is to ask how each service fails.
+
+Auth failure primarily affects login, identity validation, and token refresh. Secrets failure primarily affects startup and secret-dependent operations. Scheduler failure affects recurring execution visibility and automation cadence. Ingest-service failure reduces freshness or source completeness. Indicator-intel failure reduces deep investigation quality but should not remove quick lookup. Orchestrator failure reduces synthesized outputs but should not stop ingestion. Flowviz failure reduces visual explanation capability but not core intelligence storage.
+
+This failure analysis is important because it shows that the service boundaries are meaningful. They are not only code organization boundaries; they are degradation boundaries.
+
+Seen another way, the architecture is designed so that not every failure becomes a platform-wide stop condition. Some failures degrade trust, some degrade freshness, some degrade context, and some degrade explainability. That separation is one of the strongest arguments in favour of the chosen service decomposition.
+
+\section{Why Service Detail Matters in the Thesis}
+A thesis that simply states ``there are fifteen services'' leaves too much interpretive work to the reader. Service detail matters because it allows the reader to evaluate whether the architecture is justified, whether responsibilities are coherent, and whether the system's claims about modularity and bounded trust are credible. This chapter therefore turns architectural boxes into understandable engineering units.
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+Each service in the platform has a distinct internal logic, dependency profile, and failure role. Auth establishes trust. Secrets concentrates sensitive material. Scheduler owns time-based execution. The ingestion services transform external knowledge into local state. The analyst-facing services ground that state in local context and operational workflows. The synthesis services turn stored intelligence into ranked and human-usable analytical outputs. Seen at this level of detail, the platform's service architecture is not an arbitrary decomposition. It is a structured attempt to align code ownership, data ownership, dependency boundaries, and operational utility.

@@ -1,0 +1,113 @@
+\chapter{Theoretical Foundations}
+\thispagestyle{plain}
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+A complete academic report cannot move directly from a contemporary threat narrative to implementation choices without making its theoretical basis explicit. The platform described in this report is not only a collection of services and interfaces. It is a concrete instantiation of several bodies of theory: cyber threat intelligence as a discipline, intelligence production as a decision-support process, distributed software architecture, resilient systems design, security engineering, and human-in-the-loop AI augmentation. This chapter makes those foundations explicit so that the implementation described later can be read as the consequence of coherent design principles rather than as an accumulation of ad hoc choices.
+
+\section{Cyber Threat Intelligence as a Discipline}
+\subsection{The Purpose of Threat Intelligence}
+Cyber Threat Intelligence (CTI) is often misunderstood as a simple accumulation of indicators, reports, or adversary names. In the academic and professional literature, however, its core purpose is narrower and more demanding: transform raw observations about adversaries, infrastructure, vulnerabilities, and campaigns into knowledge that can improve defensive decision making \cite{nist_cti_guide}. That distinction matters because a platform can store very large amounts of data while producing very little intelligence in the strict sense. Intelligence exists only when data has been processed, contextualized, and linked to an operational decision.
+
+In practical terms, CTI supports questions such as the following: which adversaries are relevant to the organization; which of their techniques are observable; which vulnerabilities matter now rather than eventually; which indicators deserve immediate handling; and which developments should alter managerial risk posture. A system designed for threat intelligence must therefore do more than collect and search. It must support prioritization, contextualization, and synthesis.
+
+\subsection{The Intelligence Cycle}
+A useful theoretical frame for CTI is the intelligence cycle: planning and direction, collection, processing, analysis, dissemination, and feedback \cite{nist_cti_guide}. Although real-world workflows are more iterative than perfectly linear, the cycle remains valuable because it clarifies why a threat platform cannot be evaluated only on its ingestion layer.
+
+Planning and direction determine which questions the organization is trying to answer. Collection gathers raw data from feeds, reports, scanners, advisories, internal monitoring, and analyst knowledge. Processing transforms raw material into normalized, deduplicated, and queryable structures. Analysis interprets that processed material relative to context. Dissemination presents the result to analysts, managers, or automated systems in a usable form. Feedback closes the loop by allowing the consumer of intelligence to refine future collection and analysis.
+
+The implemented platform maps closely to this cycle. Scheduler-driven collection and service-specific ingest pipelines satisfy the collection phase. Normalization, confidence scoring, and persistence correspond to processing. The orchestrator and investigative services perform analysis. The frontend, reports, dashboard, and notifications realize dissemination. Analyst notes, overrides, triage decisions, and company-profile updates provide feedback. This mapping is important because it demonstrates that the project is not merely a data warehouse with an AI layer attached; it is an attempt to operationalize the full intelligence cycle.
+
+\subsection{Strategic, Operational, and Tactical Intelligence}
+Threat-intelligence literature commonly distinguishes among strategic, operational, and tactical levels \cite{nist_cti_guide}. Strategic intelligence addresses long-horizon questions relevant to leadership, such as sector risk evolution, geopolitical developments, and systemic attacker capability. Operational intelligence focuses on campaigns, adversary intent, targeting patterns, and the likely meaning of current developments. Tactical intelligence is closest to day-to-day defensive action: indicators, signatures, TTP mappings, and machine-consumable artefacts.
+
+This distinction is theoretically important because each level places different demands on a platform. Tactical workflows require low latency, deterministic lookup, and structured storage. Operational workflows require correlation across sources and entity types. Strategic workflows require synthesis, summarization, and the ability to relate current observations to organizational priorities. The platform's architecture reflects this differentiation. IOC lookup, actor ranking, executive briefing, and geopolitical outlook are not redundant features; they correspond to different layers of intelligence consumption.
+
+\section{Data Models for Threat Knowledge}
+\subsection{Indicators, Observables, and TTPs}
+One of the most important conceptual distinctions in CTI is the difference between indicators and behaviours. Indicators of Compromise such as IP addresses, domains, file hashes, or URLs are useful because they can be matched quickly against telemetry. Their limitation is fragility: infrastructure can be changed, domains can be rotated, and hashes often describe only one artefact in one campaign. Tactics, Techniques, and Procedures (TTPs), by contrast, describe adversary behaviour at a more durable level. Frameworks such as MITRE ATT\&CK provide a structured vocabulary for these behaviours and their relationships \cite{mitre_attack}.
+
+A mature TIP therefore needs both kinds of knowledge. Indicators support rapid operational decisions. TTPs support more durable reasoning about adversary behaviour and defensive coverage. The implemented platform reflects that distinction through separate indicator, actor, and attack-flow capabilities. The design resists a common but weak simplification in which all intelligence is reduced to lists of atomic observables.
+
+\subsection{Structured Threat Data and STIX Thinking}
+The field has increasingly moved toward graph-like representations of threat knowledge in which indicators, malware families, reports, campaigns, vulnerabilities, tools, actors, and relationships between them can be modeled explicitly. The STIX 2.1 specification is one of the best-known expressions of this idea \cite{stix21_spec}. Even when a platform does not fully implement the STIX object model internally, the conceptual lesson remains important: threat intelligence is relational by nature.
+
+This relationality explains why normalization is a first-order requirement. If the same domain, actor, or vulnerability is represented inconsistently across sources, cross-source reasoning becomes unreliable. The theory here is straightforward but consequential: structured reasoning depends on canonical identity. That is why the repository places so much emphasis on deterministic indicator normalization and stable identifiers such as CVE IDs, ATT\&CK technique IDs, and actor names.
+
+\subsection{Scoring, Confidence, and Imperfect Truth}
+Threat intelligence does not operate on perfect truth. Sources disagree, freshness varies, and observations can be incomplete, noisy, or adversarially manipulated. For that reason, confidence scoring is not an optional embellishment but a theoretical necessity. A platform must not only record what was observed; it must express how much trust should be placed in the observation and why.
+
+The repository's confidence-scoring and source-health patterns reflect this epistemic problem. They encode an important principle: intelligence systems should preserve uncertainty rather than conceal it. The same principle also explains why the platform distinguishes durable source data from synthesized AI output. Both may be useful, but they do not carry the same evidentiary weight.
+
+\section{Vulnerability Intelligence Theory}
+\subsection{Why CVSS Alone Is Not Enough}
+A recurring weakness in vulnerability management is the conflation of severity with operational priority. CVSS is designed to standardize severity assessment, not to decide organizational action on its own. It says something meaningful about the intrinsic technical impact of a vulnerability, but much less about whether the vulnerability matters to a specific organization at a specific time.
+
+This limitation motivated the emergence of complementary lenses such as EPSS and the CISA KEV catalogue. EPSS adds a probabilistic estimate of exploitation likelihood. KEV identifies vulnerabilities that are already exploited in the wild. Together with asset context, exposure state, and business relevance, these constructs support a more realistic prioritization process. The theory behind the platform's vulnerability workflow is therefore not ``collect CVEs,'' but ``combine severity, exploitation evidence, and organizational context into a decision-support signal.''
+
+\subsection{Contextual Relevance and Asset-Centred Risk}
+The conceptual centre of a useful vulnerability workflow is contextual relevance. A vulnerability affecting a technology not present in the organization does not command the same urgency as one affecting a public-facing system in the organization's own stack. This appears obvious, but many tools remain source-centric rather than organization-centric. They treat all disclosures as equally worthy of initial attention.
+
+The CMDB and company-profile layers of the implemented system are the platform's answer to this theoretical problem. They move prioritization from a generic ranking task to a contextualized risk-estimation task. In that sense, the platform is not merely enriching vulnerability data; it is attempting to model one of the missing variables in many vulnerability programmes: organizational specificity.
+
+\section{Architectural Theory Behind the Platform Structure}
+\subsection{Modularity, Cohesion, and Coupling}
+Software architecture theory has long emphasized that large systems are easier to evolve when components are organized around strong internal cohesion and weak external coupling. Cohesion means that a module's internal responsibilities belong together conceptually. Coupling measures how strongly modules depend on one another's internal decisions.
+
+The service decomposition of the platform follows this logic. Vulnerability intelligence, threat actors, indicators, domain monitoring, secrets, authentication, orchestration, and CMDB are separated because each represents a cohesive responsibility with its own external dependencies, failure modes, and data model. The design tries to avoid one of the most common anti-patterns in service-oriented systems: splitting the code into many deployables while still coupling them tightly through shared tables or hidden assumptions.
+
+\subsection{Microservices Versus Other Styles}
+Microservices are often presented as a universally modern architecture, which is intellectually weak. In reality, they are a tradeoff. A monolith simplifies deployment and debugging but can accumulate coupling and release friction. A modular monolith preserves in-process simplicity while enforcing internal boundaries. Microservices add isolation, independent scaling potential, and clearer ownership, but they introduce operational complexity and distributed failure modes \cite{microservices_arch}.
+
+The platform should therefore not be defended on the simplistic ground that microservices are always superior. The stronger argument is contextual. The system interacts with many heterogeneous external sources, has multiple independently meaningful domains, benefits from domain-specific failure isolation, and can be deployed on one host despite its service split. In other words, the project adopts service boundaries not for fashion, but because they align reasonably well with the domains it serves.
+
+\subsection{Backend-for-Frontend Theory}
+The Backend-for-Frontend (BFF) pattern exists because user interfaces often need a request shape that is different from what internal services should expose natively. A BFF aggregates, reshapes, and secures backend interactions for a specific frontend experience rather than forcing the browser to understand every internal service contract. In practice, it reduces client complexity, centralizes edge concerns, and can hide internal topology from the browser \cite{backend_for_frontend_pattern}.
+
+This theoretical frame explains why the Next.js proxy in the platform is not merely a routing convenience. It is an architectural decision that keeps the browser-facing contract stable while allowing backend services to remain domain-focused. It also supports one of the main design goals of the project: concentrate trust and routing decisions at a controllable edge rather than dispersing them into the browser.
+
+\section{Resilience and Fault-Tolerance Theory}
+\subsection{Graceful Degradation}
+Resilient-system theory distinguishes between complete failure and graceful degradation. A system degrades gracefully when the failure of one dependency reduces capability without collapsing the whole service. This matters acutely in threat platforms, because upstream feeds fail independently and unpredictably.
+
+The design goal ``partial success is success'' is the practical expression of graceful degradation. If three feeds succeed and two fail, an ingest cycle can still produce value. If the LLM provider is unavailable, the platform should still ingest and serve stored intelligence. This is not merely a coding convenience; it is a direct application of resilience theory to a domain with unreliable external dependencies.
+
+\subsection{Retry, Timeout, and Circuit-Breaker Patterns}
+Distributed systems must distinguish between transient and persistent failure. Retries can help when a failure is temporary, but indiscriminate retries can amplify outage pressure. Timeouts prevent infinite waiting. Circuit breakers stop repeated calls to dependencies that are already failing, allowing the system to fail fast and recover later \cite{circuit_breaker_pattern}.
+
+The repository's outbound HTTP layer embodies these ideas with bounded retries, timeout handling, and source-health-aware breaker state. The theoretical justification is that remote calls are not ordinary function calls. They occur across failure domains, and the calling system must defend itself against latency, partial failure, and cascading retries.
+
+\subsection{Cache-Aside and Hot-Path Optimization}
+Caching theory is also directly relevant to the platform. A cache is valuable when repeated reads are expensive relative to update frequency and when stale data is acceptable within a bounded interval. The cache-aside pattern in particular is well suited to read-heavy workflows: the application looks in the cache first, falls back to the durable store on a miss, then repopulates the cache \cite{cache_aside_pattern}.
+
+IOC lookup fits this model closely. Indicators are queried repeatedly, often with strong temporal locality during an incident, and a short-lived cached verdict is operationally useful. That is why the platform treats Redis as a hot-path accelerator rather than as a durable system of record.
+
+\section{Security Engineering Theory}
+\subsection{Trust Boundaries and Zero Trust}
+A trust boundary is the point at which one component can no longer assume that another component is benign or well-formed. Security architecture becomes clearer when systems are described in terms of these boundaries rather than in vague language about being ``secure.'' Zero trust, in its strongest form, pushes this principle further by assuming no implicit trust based solely on network location \cite{nist_zero_trust}.
+
+The current platform does not fully implement a strict zero-trust internal fabric. Instead, it enforces a stronger boundary at the browser-to-platform edge while simplifying some internal trust assumptions on the private network. This is academically important because it clarifies the design as a tradeoff between operational simplicity and stronger internal segmentation, not as an unqualified security ideal.
+
+\subsection{Secrets Centralization and Key Management}
+Credential sprawl is a major systems risk because every duplicated secret increases the attack surface, rotation burden, and audit complexity. Centralized secrets management reduces that sprawl by making storage, retrieval, rotation, and access logging explicit concerns rather than ad hoc implementation details.
+
+The platform's dedicated secrets service reflects this theory directly. It treats secrets as governed assets rather than configuration trivia. The fact that only a bootstrap secret and encryption key remain outside the vault is not an implementation accident; it is the minimum compromise necessary to solve the startup trust problem.
+
+\section{Theory of AI-Augmented Analysis}
+\subsection{Automation Versus Augmentation}
+A recurring mistake in discussions of AI for security is to frame the choice as either full automation or purely manual work. In practice, much of the value lies in augmentation: using AI to compress analysis time, summarize context, propose hypotheses, and generate structured drafts that remain subject to human review. This model is especially appropriate in security, where the cost of plausible but wrong output can be high.
+
+The platform follows an augmentation model rather than an autonomy model. Analysts remain responsible for interpretation, override, escalation, and acceptance of residual risk. The AI layer contributes synthesis, ranking, and summarization. This division of labour is theoretically important because it aligns system behaviour with the actual strengths and weaknesses of current language models.
+
+\subsection{Structured Outputs and Hallucination Containment}
+Large language models are useful partly because they can compress and re-express context. Their main weakness in structured workflows is that they may output convincing but malformed or unsupported content. One practical response is to require typed, schema-validated outputs instead of unconstrained prose. Structured-output validation does not eliminate hallucination, but it constrains the space in which it can occur and makes failures easier to detect.
+
+This is why the platform requests machine-usable structured responses and validates them before downstream use. The theory is straightforward: in operational systems, AI should be treated as an untrusted generator whose outputs must be checked before they influence durable workflows.
+
+\subsection{Human-in-the-Loop Governance}
+Human-in-the-loop design remains necessary when outputs affect prioritization, incident handling, or executive reporting. Governance is not only a compliance matter; it is a technical design issue. Systems that treat AI output as implicitly authoritative become brittle when models drift, providers change behaviour, or context exceeds prompt limits.
+
+The repository's choice to persist outputs, surface them for review, and allow analyst override corresponds to this governance logic. The design assumes that AI is useful precisely because it is integrated into a workflow with review, not because it replaces review.
+
+\section*{Conclusion}
+\addcontentsline{toc}{section}{Conclusion}
+The platform sits at the intersection of several theoretical domains. CTI theory explains why collection, normalization, analysis, and dissemination must all exist in one coherent workflow. Vulnerability-intelligence theory explains why severity alone cannot drive action. Software architecture theory explains the choice of bounded service ownership, BFF composition, and schema isolation. Resilience theory explains retries, timeouts, graceful degradation, and cache-first hot paths. Security-engineering theory explains explicit trust boundaries and centralized secret handling. AI-augmentation theory explains why structured outputs, bounded usage, and human override are necessary. The remaining chapters can therefore be read not merely as a description of what was built, but as an applied demonstration of these principles under real operational constraints.

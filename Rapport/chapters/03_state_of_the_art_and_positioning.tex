@@ -1,0 +1,87 @@
+\chapter{State of the Art, Existing Solutions, and Project Positioning}
+\thispagestyle{plain}
+\section*{Introduction}
+\addcontentsline{toc}{section}{Introduction}
+A serious engineering thesis must position its contribution against realistic alternatives. That does not mean claiming superiority on every axis. It means identifying the problem space, examining the dominant classes of solution already available, and explaining with precision why the delivered system is justified despite those existing options. This chapter therefore reviews the main solution families relevant to the project and clarifies the specific gap that the implemented platform addresses.
+
+\section{Threat Intelligence Platforms as a Product Category}
+Threat Intelligence Platforms exist because security-relevant knowledge tends to be fragmented across feeds, advisories, analyst notes, vulnerability databases, internal monitoring, and external research. A TIP attempts to unify these sources into one knowledge workflow so that data can be searched, correlated, enriched, and disseminated more effectively than it can through scattered tools.
+
+In theory, a mature TIP should support at least five broad functions. First, it should ingest from multiple heterogeneous sources. Second, it should normalize and preserve threat entities in a consistent model. Third, it should support correlation across those entities. Fourth, it should expose workflows tailored to analysts and decision makers. Fifth, it should allow intelligence to be shared or operationalized through downstream systems. Many real products satisfy some of these criteria strongly and others only partially. That unevenness is what makes solution positioning necessary.
+
+\section{Commercial Threat Intelligence Platforms}
+Commercial TIP products generally offer the strongest out-of-the-box feature breadth. They typically provide rich feed connectors, curated threat libraries, polished user interfaces, built-in scoring and enrichment, sharing workflows, and in many cases some level of natural-language summarization or AI assistance. Their strongest advantage is operational maturity: teams can adopt a large amount of functionality without building or maintaining all infrastructure themselves.
+
+However, commercial products also bring several constraints that matter in this project's target environment. Licensing and subscription cost can be significant, especially when the organization is small in seat count but still needs advanced capability. The internal reasoning behind scoring or prioritization may be difficult to inspect. Custom integration of niche feeds or locally relevant workflows may be restricted or expensive. Most importantly for this project, commercial tools rarely provide a single auditable AI egress designed around local governance constraints. They may use AI features, but not under the same architectural and compliance assumptions as a self-hosted bank-operated platform.
+
+For that reason, commercial TIPs represent the strongest benchmark for feature completeness, but not automatically the strongest fit for the specific operating profile studied here.
+
+\section{OpenCTI and Graph-Oriented Intelligence Platforms}
+OpenCTI is one of the most important open-source reference points in the CTI ecosystem. Its main conceptual strength is its graph-oriented representation of intelligence: campaigns, reports, indicators, malware, threat actors, infrastructure, tools, and relationships between them can be modeled in a rich and interconnected way. This aligns strongly with the relational nature of CTI and with the STIX-style view that intelligence entities derive much of their meaning from their links to one another.
+
+For an intelligence team focused on knowledge management, sharing, and structured representation, this is a major advantage. OpenCTI is also attractive because it is open, extensible, and far more transparent than many proprietary offerings.
+
+Yet the same strengths can become tradeoffs under a different operating model. OpenCTI is heavier to operate than the platform developed here, both conceptually and infrastructurally. It is optimized for deep threat-knowledge modeling, not specifically for the combination of sub-second IOC lookup, organization-specific CVE relevance ranking, one auditable AI egress, and a small-team single-host operational profile. In other words, OpenCTI is very strong at being an intelligence graph platform; the present project is narrower, more workflow-specific, and more explicitly optimized for a constrained local operating model.
+
+\section{MISP and Intelligence Sharing Platforms}
+MISP occupies a different but equally important place in the ecosystem. Its strongest value lies in structured intelligence sharing, event-oriented organization, and widespread community adoption. It is especially effective when organizations need to exchange indicators, sightings, attributes, and event context within established sharing communities \cite{misp_project}.
+
+MISP's design logic is therefore distinct from that of the current project. It is excellent as a collaborative intelligence-sharing platform. It is less naturally oriented toward management-facing synthesis, organization-specific vulnerability prioritization, or AI-assisted investigative workflows embedded in one end-user application. A team can absolutely build surrounding tooling around MISP to achieve some of those goals, but that surrounding work is precisely part of the gap the present project set out to address.
+
+This does not make MISP weak. It makes it specialized differently. In a comparative framework, MISP is strongest on community sharing and structured event handling, while the implemented platform is stronger on local correlation, platform-integrated investigation, and organization-specific synthesis.
+
+\section{SIEM-Native Intelligence and Detection Platforms}
+SIEM platforms and modern detection suites provide another class of alternative. Their natural strength is event collection, detection logic, alerting, retention, and operational visibility into the organization's own environment. Some also provide TI ingest, matching, enrichment, and analyst workbench features. For many teams, this makes the SIEM the de facto centre of security operations.
+
+The limitation is conceptual rather than merely technical. A SIEM is optimized first for telemetry and detection engineering, not for broad threat-intelligence knowledge production. It can tell an analyst what triggered, on which host, and with what surrounding evidence. It is usually less strong at managing a curated actor corpus, generating contextual executive synthesis, ranking vulnerabilities against a company profile, or treating supply-chain and open-source reporting as first-class intelligence material.
+
+This is why the current platform should be seen as complementary to a SIEM rather than as a replacement. The repository's integration with Wazuh acknowledges exactly this point. The SIEM remains the natural owner of raw operational telemetry and rule execution. The TIP becomes the natural owner of intelligence correlation, contextual prioritization, and higher-level synthesis.
+
+\section{Point Tools and Manual Intelligence Workflows}
+A common real-world alternative to a dedicated platform is not a single competing product, but a patchwork of point tools and analyst habits. One site might be used for IOC lookup, another for vulnerability review, another for actor research, another for ransomware tracking, another for breach monitoring, and a spreadsheet or ticket system for local prioritization.
+
+This model remains common because it is easy to begin with and often appears inexpensive. Its weakness is cumulative friction. Every tool shift imposes context switching. Every inconsistent naming scheme imposes mental normalization. Every analyst note left outside the main workflow weakens institutional memory. Every high-value correlation must be rediscovered manually. Over time, the team accumulates capability fragments rather than one operational intelligence surface.
+
+The platform implemented in this project is fundamentally a response to that fragmentation. It does not merely aspire to aggregate data. It aims to compress the analyst's working set into one environment where ingestion, lookup, contextualization, and synthesis happen against the same stored knowledge base.
+
+\section{Comparative Positioning of the Project}
+The repository's own comparative analysis shows that the platform is not the absolute leader on every possible criterion. A SaaS platform is still operationally simpler. OpenCTI is stronger on graph-centric intelligence modeling. MISP remains stronger for some sharing patterns. SIEM-native tooling remains stronger for low-latency native telemetry correlation. Those observations are not weaknesses in the thesis; they are evidence of honest positioning.
+
+The justification for the present project lies in a narrower and more operationally specific intersection of needs.
+
+\begin{table}[H]
+\centering
+\caption{Positioning logic of the delivered platform}
+\label{tab:positioning-logic}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{|p{4.4cm}|p{7.0cm}|}
+\hline
+\textbf{Need} & \textbf{Why the delivered platform is justified}\\
+\hline
+Self-hosted deployment & Avoids dependence on a SaaS operating model and keeps data gravity on premises\\
+\hline
+Small-team operability & Single-host Compose deployment and narrow operational surface fit limited staffing\\
+\hline
+Auditable AI use & LiteLLM gateway provides one controlled egress rather than many hidden model integrations\\
+\hline
+Context-aware vulnerability prioritization & CVEs are ranked relative to the organization's own profile and assets\\
+\hline
+Integrated analyst workflow & IOC lookup, actor context, reports, investigation, and notifications share one knowledge base\\
+\hline
+Management-facing synthesis & The platform produces executive reporting rather than only analyst-level raw intelligence views\\
+\hline
++\end{tabular}
++\end{table}
++
++What emerges from this table is not a claim of universal superiority. It is a claim of contextual fit. The platform is justified because no alternative in the comparison delivers all of these properties together at the same operational cost profile.
++
++\section{The Specific Research and Engineering Contribution}
++The contribution of the project should therefore be stated carefully. It is not the invention of a new intelligence ontology, a new vulnerability scoring standard, or a new distributed systems pattern. Its contribution lies in the integration of several mature ideas into one coherent artefact aimed at one concrete operating model.
++
++More specifically, the project contributes four things. First, it delivers an end-to-end self-hosted workflow that connects collection, normalization, contextualization, AI-assisted synthesis, and dissemination. Second, it grounds vulnerability and actor prioritization in the organization's own profile rather than in generic feed order. Third, it isolates AI behind one controlled gateway and constrains it through structured output validation. Fourth, it does so in a system that remains understandable and operable by a small team.
++
++This is why the platform is best read as an engineering synthesis rather than as a single-algorithm contribution. The novelty is architectural and operational: what has been combined, why it has been combined this way, and how the combination addresses a gap not well served by neighbouring solutions.
++
++\section*{Conclusion}
++\addcontentsline{toc}{section}{Conclusion}
++Existing solutions already cover important parts of the threat-intelligence problem space. Commercial TIPs provide broad capability and polished maturity. OpenCTI offers rich graph-oriented modeling. MISP excels at sharing workflows. SIEM platforms remain indispensable for operational telemetry and detection. Point tools remain easy to adopt but weak at sustained correlation. The present project's justification lies not in denying those strengths, but in occupying a different intersection: self-hosted, small-team, context-aware, AI-assisted, and designed around one auditable intelligence workflow. The next chapter translates this positioning into concrete requirements and design rationale.

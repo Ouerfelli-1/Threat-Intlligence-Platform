@@ -1,0 +1,102 @@
+@startuml Service Layer Components
+
+left to right direction
+hide empty members
+skinparam linetype ortho
+skinparam componentStyle uml2
+
+' ==================== API LAYER ====================
+
+package "API Layer" as api {
+  component [api/main.py\nFastAPI Routes] as API
+}
+
+' ==================== SERVICE LAYER ====================
+
+package "Service Layer\nmanager/services/" as services {
+  component [ScopeService] as ScopeSvc
+  component [TargetService] as TargetSvc
+  component [JobService] as JobSvc
+  component [ScheduleService] as ScheduleSvc
+  component [SchedulerService] as SchedulerSvc
+  component [APIKeyService] as APIKeySvc
+  component [DataSourceService] as SourceSvc
+}
+
+' ==================== SCHEMA LAYER ====================
+
+package "Schema Layer\nmanager/models/" as schemas {
+  component [schemas.py\nPydantic DTOs] as Schemas
+}
+
+' ==================== PERSISTENCE LAYER ====================
+
+package "Persistence Layer\nmanager/database/" as persistence {
+  component [models.py\nSQLAlchemy ORM] as Models
+  component [__init__.py\nSession Factory] as Session
+}
+
+' ==================== EXTERNAL ====================
+
+package "External" as external {
+  database "PostgreSQL" as PG
+  queue "Redis" as Redis
+}
+
+' ==================== ENGINE INTERFACE ====================
+
+package "Engine Interface" as engine {
+  component [worker.py\nJob Executor] as Worker
+}
+
+' ==================== API → SERVICES ====================
+
+API --> ScopeSvc : uses
+API --> TargetSvc : uses
+API --> JobSvc : uses
+API --> ScheduleSvc : uses
+API --> APIKeySvc : uses
+API --> SourceSvc : uses
+
+' ==================== SERVICES → SCHEMAS ====================
+
+ScopeSvc --> Schemas : validates
+TargetSvc --> Schemas : validates
+JobSvc --> Schemas : validates
+ScheduleSvc --> Schemas : validates
+APIKeySvc --> Schemas : validates
+SourceSvc --> Schemas : validates
+
+' ==================== SERVICES → PERSISTENCE ====================
+
+ScopeSvc --> Models : queries\nScope, Target
+TargetSvc --> Models : queries\nTarget
+JobSvc --> Models : queries\nJob
+ScheduleSvc --> Models : queries\nSchedule
+SchedulerSvc --> Models : queries\nSchedule
+APIKeySvc --> Models : queries\nAPIKey
+SourceSvc --> Models : queries\nDataSource
+
+ScopeSvc --> Session : injects
+TargetSvc --> Session : injects
+JobSvc --> Session : injects
+ScheduleSvc --> Session : injects
+SchedulerSvc --> Session : injects
+APIKeySvc --> Session : injects
+SourceSvc --> Session : injects
+
+' ==================== PERSISTENCE → DATABASE ====================
+
+Session --> PG : SQL
+
+' ==================== SERVICE → REDIS ====================
+
+JobSvc --> Redis : lpush jobs
+SchedulerSvc --> Redis : lpush jobs
+
+' ==================== ENGINE INTERFACE ====================
+
+Redis --> Worker : brpop jobs
+Worker --> PG : UPDATE status\nINSERT findings
+
+@enduml

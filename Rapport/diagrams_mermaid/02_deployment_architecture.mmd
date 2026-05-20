@@ -1,0 +1,69 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'primaryColor': '#4a90d9', 'primaryTextColor': '#fff', 'primaryBorderColor': '#2c5aa0', 'lineColor': '#5c6bc0', 'secondaryColor': '#81c784', 'tertiaryColor': '#fff3e0'}}}%%
+
+flowchart TB
+    subgraph External["External"]
+        CLIENT[Client<br/>Browser / CLI]
+    end
+
+    subgraph DockerCompose["Docker Compose Network: recon_network"]
+        subgraph APIs["API Services"]
+            MANAGER[recon_manager<br/>manager/:8000<br/>uvicorn api.main:app]
+            FINDINGS[recon_findings<br/>findings/:8001<br/>uvicorn main:app]
+        end
+
+        subgraph Workers["Background Workers"]
+            ENGINE[recon_engine<br/>engine/<br/>python worker.py]
+            SCHEDULER[recon_scheduler<br/>manager/<br/>python services/scheduler_service.py]
+        end
+
+        subgraph DataStores["Data Stores"]
+            POSTGRES[(recon_database<br/>timescale/timescaledb:latest-pg15<br/>:5432)]
+            REDIS[(recon_redis<br/>redis:7-alpine<br/>:6379)]
+        end
+
+        subgraph Observability["Observability"]
+            GRAFANA[recon_grafana<br/>grafana/grafana:latest<br/>:3000]
+        end
+    end
+
+    subgraph Volumes["Docker Volumes"]
+        VOL_PG[(postgres_data)]
+        VOL_RES[(recon_results)]
+        VOL_GF[(grafana_data)]
+    end
+
+    %% External access
+    CLIENT -->|HTTP :8000| MANAGER
+    CLIENT -->|HTTP :8001| FINDINGS
+    CLIENT -->|HTTP :3000| GRAFANA
+
+    %% Manager dependencies
+    MANAGER -->|DATABASE_URL :5432| POSTGRES
+    MANAGER -->|REDIS_URL :6379| REDIS
+
+    %% Engine dependencies
+    ENGINE -->|DATABASE_URL :5432| POSTGRES
+    ENGINE -->|REDIS_URL :6379| REDIS
+
+    %% Scheduler dependencies
+    SCHEDULER -->|DATABASE_URL :5432| POSTGRES
+    SCHEDULER -->|REDIS_URL :6379| REDIS
+
+    %% Findings dependencies
+    FINDINGS -->|DATABASE_URL :5432| POSTGRES
+
+    %% Grafana dependencies
+    GRAFANA -->|PostgreSQL :5432| POSTGRES
+
+    %% Volume mounts
+    POSTGRES -.-> VOL_PG
+    ENGINE -.-> VOL_RES
+    GRAFANA -.-> VOL_GF
+
+    %% Service startup dependencies (depends_on)
+    MANAGER -. depends_on .-> POSTGRES
+    MANAGER -. depends_on .-> REDIS
+    ENGINE -. depends_on .-> MANAGER
+    SCHEDULER -. depends_on .-> MANAGER
+    FINDINGS -. depends_on .-> POSTGRES
+    GRAFANA -. depends_on .-> POSTGRES

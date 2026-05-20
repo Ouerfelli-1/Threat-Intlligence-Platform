@@ -1,0 +1,166 @@
+@startuml Domain Persistence Model
+
+left to right direction
+hide empty members
+skinparam linetype ortho
+skinparam classAttributeIconSize 0
+
+' ==================== ENUMS ====================
+
+enum TargetTypeEnum {
+  DOMAIN
+  SUBDOMAIN
+  IP_ADDRESS
+  CIDR_RANGE
+  ASN
+  TLS_CERT
+}
+
+enum ReconModeEnum {
+  PASSIVE
+  ACTIVE
+}
+
+enum JobStatusEnum {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  PAUSED
+  CANCELLED
+}
+
+' ==================== ENTITIES ====================
+
+entity "Scope" as scope {
+  * id : String(36) <<PK>>
+  --
+  * name : String(255) <<unique>>
+  * enabled : Boolean
+  description : Text
+  config : JSON
+  * created_at : DateTime
+  updated_at : DateTime
+  created_by : String(255)
+}
+
+entity "Target" as target {
+  * id : String(36) <<PK>>
+  --
+  * scope_id : String(36) <<FK>>
+  * type : TargetTypeEnum
+  * value : String(500)
+  * enabled : Boolean
+  description : Text
+  created_at : DateTime
+  updated_at : DateTime
+}
+
+entity "Schedule" as schedule {
+  * id : String(36) <<PK>>
+  --
+  * scope_id : String(36) <<FK>>
+  * name : String(255)
+  * enabled : Boolean
+  * mode : ReconModeEnum
+  * cron_expression : String(100)
+  description : Text
+  created_at : DateTime
+  updated_at : DateTime
+  last_run : DateTime
+  next_run : DateTime
+}
+
+entity "Job" as job {
+  * id : String(36) <<PK>>
+  --
+  * scope_id : String(36) <<FK>>
+  schedule_id : String(36) <<FK>>
+  * mode : ReconModeEnum
+  * status : JobStatusEnum
+  * enabled : Boolean
+  * triggered_by : String(50)
+  * created_at : DateTime
+  started_at : DateTime
+  completed_at : DateTime
+  duration_seconds : Integer
+  targets_scanned : Integer
+  findings_count : Integer
+  errors_count : Integer
+  config_snapshot : JSON
+}
+
+entity "DataSource" as datasource {
+  * id : String(36) <<PK>>
+  --
+  * name : String(100) <<unique>>
+  * enabled : Boolean
+  * source_type : String(50)
+  requires_api_key : Boolean
+  * global_enabled : Boolean
+  scope_overrides : JSON
+  created_at : DateTime
+  updated_at : DateTime
+}
+
+entity "APIKey" as apikey {
+  * id : String(36) <<PK>>
+  --
+  * source_id : String(36) <<FK>>
+  scope_id : String(36) <<FK>>
+  * key_value_encrypted : Text
+  * enabled : Boolean
+  created_at : DateTime
+  expires_at : DateTime
+}
+
+entity "ReconFinding" as finding <<hypertable>> {
+  * id : String(36) <<PK>>
+  --
+  * time : DateTime <<partition>>
+  * scope_id : String(36) <<FK>>
+  * job_id : String(36) <<FK>>
+  * finding_type : String(50)
+  * value : Text
+  * source : String(100)
+  extra_data : JSON
+  * first_seen : DateTime
+  * last_seen : DateTime
+}
+
+entity "DNSRecord" as dnsrecord <<hypertable>> {
+  * id : String(36) <<PK>>
+  --
+  * time : DateTime <<partition>>
+  * scope_id : String(36) <<FK>>
+  * domain : String(500)
+  * record_type : String(10)
+  * value : Text
+  ttl : Integer
+  * first_seen : DateTime
+  * last_seen : DateTime
+}
+
+' ==================== RELATIONSHIPS ====================
+
+scope ||--o{ target : "has many"
+scope ||--o{ schedule : "has many"
+scope ||--o{ job : "has many"
+scope ||--o{ finding : "has many"
+scope ||--o{ dnsrecord : "has many"
+
+schedule ||--o{ job : "triggers"
+
+job ||--o{ finding : "produces"
+
+datasource ||--o{ apikey : "has many"
+apikey }o--|| scope : "scoped to"
+
+' ==================== ENUM USAGE ====================
+
+target ..> TargetTypeEnum : uses
+schedule ..> ReconModeEnum : uses
+job ..> ReconModeEnum : uses
+job ..> JobStatusEnum : uses
+
+@enduml
