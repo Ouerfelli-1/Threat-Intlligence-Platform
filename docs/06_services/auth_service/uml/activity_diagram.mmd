@@ -1,0 +1,11 @@
+%% auth — /me request activity (with revocation check)
+flowchart TD
+    START([GET /me with Bearer]) --> DECODE{Valid RS256<br/>signature + not expired?}
+    DECODE -- no --> R401a[401 Unauthorized]
+    DECODE -- yes --> SESS{Session row<br/>exists and not revoked?}
+    SESS -- no --> R401b[401 Unauthorized]
+    SESS -- yes --> LOAD[Load user + role permissions]
+    LOAD --> RESP[200 profile + effective permissions]
+    R401a --> END([end])
+    R401b --> END
+    RESP --> END

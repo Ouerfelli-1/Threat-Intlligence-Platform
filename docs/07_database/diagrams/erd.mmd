@@ -1,0 +1,28 @@
+%% ERD — representative cross-schema view (no cross-schema FKs; relations are logical)
+erDiagram
+    %% vuln schema (same-schema FKs by cve_id)
+    cves ||--o| epss : "cve_id"
+    cves ||--o| kev : "cve_id"
+    cves ||--o{ cve_insights : "cve_id"
+    cves ||--o{ cve_notes : "cve_id"
+
+    %% ioc schema
+    indicators ||--o{ indicator_sources : "indicator_id"
+    indicators ||--o{ indicator_notes : "indicator_id"
+
+    %% actors schema
+    actors ||--o{ actor_ttps : "actor_id"
+    actors ||--o{ actor_tools : "actor_id"
+    tools ||--o{ actor_tools : "tool_id"
+    actors ||--o{ actor_insights : "actor_id"
+    ransomware_groups ||--o{ ransomware_victims : "group_id"
+
+    %% orchestrator schema
+    notification_rules ||--o{ notification_dispatches : "rule_id"
+
+    %% indicator schema
+    dork_runs ||--o{ dork_findings : "run_id"
+
+    %% LOGICAL cross-schema relations (no DB FK — app-level joins)
+    indicators }o..o{ actors : "normalized_value (logical)"
+    cves }o..o{ threats : "cve_id (logical)"

@@ -1,0 +1,16 @@
+%% Query flow — IOC lookup (cache-first) vs ingest write (idempotent upsert)
+flowchart TD
+    subgraph read["READ: IOC lookup (hot path)"]
+        RQ[lookup request] --> NORM[normalize value]
+        NORM --> RGET{Redis GET<br/>ioc:type:value}
+        RGET -->|hit| RRET[return verdict <10ms]
+        RGET -->|miss| RPG[(Postgres index lookup<br/>type, normalized_value)]
+        RPG --> RSET[Redis SETEX 10min]
+        RSET --> RRET2[return verdict <200ms]
+    end
+    subgraph write["WRITE: ingest (idempotent)"]
+        WQ[feed item] --> WNORM[normalize]
+        WNORM --> WUP[(INSERT ... ON CONFLICT DO UPDATE)]
+        WUP --> WSRC[(append indicator_sources)]
+        WSRC --> WSCORE[recompute confidence]
+    end

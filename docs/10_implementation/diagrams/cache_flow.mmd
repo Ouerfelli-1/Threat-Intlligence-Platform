@@ -1,0 +1,19 @@
+%% Cache flow — Redis as a loss-tolerant accelerator, never source of truth
+flowchart TD
+    REQ["request needing data"] --> CHECK{"in Redis?"}
+    CHECK -->|hit| SERVE["return cached value"]
+    CHECK -->|miss| DB[("Postgres — source of truth")]
+    DB --> POP["populate Redis with TTL"]
+    POP --> SERVE
+
+    subgraph keys["key spaces + TTL"]
+        K1["ioc:&lt;type&gt;:&lt;value&gt; — 10 min (hot lookup)"]
+        K2["cve:&lt;id&gt; — 1 h"]
+        K3["health:&lt;svc&gt;:&lt;source&gt; — 60 s (circuit state)"]
+        K4["ai:&lt;sha256(prompt)&gt; — 24 h"]
+        K5["rl:&lt;svc&gt;:&lt;key&gt; — per-window (rate limit)"]
+    end
+
+    WIPE["Redis flushed / lost"] -->|safe| REBUILD["next miss repopulates from Postgres (G6)"]
+    INSIGHT["AI insight"] -.cache-first by prompt_version.-> DBROW[("*_insights table — durable")]
+    DBROW -.never overwritten by empty payload.-> INSIGHT

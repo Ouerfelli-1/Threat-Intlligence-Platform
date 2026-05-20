@@ -1,0 +1,20 @@
+%% auth — login sequence
+sequenceDiagram
+    autonumber
+    participant C as Client (BFF)
+    participant A as routes/auth.py
+    participant S as security.py
+    participant DB as Postgres auth
+    C->>A: POST /login {username, password}
+    A->>DB: SELECT user WHERE username
+    DB-->>A: user (or null)
+    A->>S: verify_password(hash, password)
+    S-->>A: ok / fail
+    alt ok
+        A->>S: sign_token(access, 1h)
+        A->>DB: INSERT session(refresh_hash, exp)
+        A->>DB: INSERT audit_log(login)
+        A-->>C: 200 {access_token, refresh_token}
+    else fail
+        A-->>C: 401
+    end

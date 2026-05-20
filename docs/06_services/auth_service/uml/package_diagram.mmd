@@ -1,0 +1,34 @@
+%% auth — package diagram
+flowchart TD
+    subgraph app["app/"]
+        main["main.py"]
+        settings["settings.py"]
+        db["db.py"]
+        security["security.py"]
+        deps["deps.py"]
+        seed["seed.py"]
+        models["models.py"]
+        subgraph routes["routes/"]
+            r_auth["auth.py"]
+            r_users["users.py"]
+            r_roles["roles.py"]
+            r_sessions["sessions.py"]
+            r_jwks["jwks.py"]
+        end
+    end
+    subgraph packages["shared packages/"]
+        tc["tip_common"]
+        td["tip_db"]
+        ts["tip_secrets"]
+    end
+    main --> routes
+    main --> seed
+    main --> security
+    main --> tc
+    main --> td
+    routes --> deps
+    routes --> models
+    deps --> security
+    seed --> models
+    db --> td
+    main --> ts

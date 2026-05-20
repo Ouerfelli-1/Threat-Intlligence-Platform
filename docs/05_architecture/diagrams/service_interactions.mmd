@@ -1,0 +1,74 @@
+%% Service interactions — who calls whom (excluding stores)
+graph LR
+    classDef ai fill:#2a1a3a,stroke:#a371f7,color:#fff
+
+    SCHED["scheduler"]
+    NEWS["news-collector"]
+    VULN["vuln-intel"]
+    THREAT["threat-intel"]
+    IOC["ioc-collector"]
+    ACTORS["threat-actors"]
+    INTEG["integrations"]
+    CMDB["cmdb"]
+    FLOW["flowviz"]:::ai
+    ASM["asm"]
+    DW["domainwatch"]
+    II["indicator-intel"]
+    ORCH["orchestrator"]:::ai
+    LLM["litellm"]:::ai
+    SEC["secrets"]
+
+    %% scheduler triggers
+    SCHED -->|POST /ingest/run| NEWS
+    SCHED -->|POST /ingest/run| THREAT
+    SCHED -->|POST /refresh/*| VULN
+    SCHED -->|POST /ingest/run| IOC
+    SCHED -->|POST /refresh| ACTORS
+    SCHED -->|POST /scan/run| ASM
+    SCHED -->|POST /check/run| DW
+    SCHED -->|POST /wazuh/sync| INTEG
+    SCHED -->|POST /analyze| ORCH
+    SCHED -->|POST /analyze/geo| ORCH
+
+    %% orchestrator fan-out
+    ORCH --> VULN
+    ORCH --> ACTORS
+    ORCH --> INTEG
+    ORCH --> CMDB
+    ORCH --> IOC
+    ORCH --> FLOW
+    ORCH --> LLM
+
+    %% inline analyze calls
+    THREAT -->|/flows| FLOW
+    THREAT -->|/indicators auto-promote| IOC
+    THREAT --> LLM
+    ACTORS -->|/flows| FLOW
+    ACTORS -->|/indicators auto-promote| IOC
+    ACTORS --> LLM
+    FLOW --> LLM
+    NEWS --> LLM
+    II --> LLM
+
+    %% threat-intel reads company domains for HIBP
+    THREAT -->|/profile/latest| CMDB
+
+    %% event notifications to orchestrator
+    DW -->|/internal/notify| ORCH
+    VULN -->|/internal/notify| ORCH
+    THREAT -->|/internal/notify| ORCH
+
+    %% everyone reads secrets at startup
+    NEWS --> SEC
+    VULN --> SEC
+    THREAT --> SEC
+    IOC --> SEC
+    ACTORS --> SEC
+    INTEG --> SEC
+    CMDB --> SEC
+    FLOW --> SEC
+    ASM --> SEC
+    DW --> SEC
+    II --> SEC
+    ORCH --> SEC
+    LLM --> SEC

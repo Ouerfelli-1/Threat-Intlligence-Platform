@@ -1,0 +1,25 @@
+%% Async execution model — the three concurrency primitives in use
+flowchart TD
+    subgraph gather["asyncio.gather(return_exceptions=True) — source fan-out"]
+        S1["source A coroutine"]
+        S2["source B coroutine"]
+        S3["source C coroutine"]
+    end
+    CYCLE["ingest/investigate cycle"] --> gather
+    gather --> MERGE["partial success is success<br/>failed sources logged, not raised"]
+
+    subgraph bg["FastAPI BackgroundTasks — slow triggers"]
+        T1["return 202 immediately"]
+        T2["work continues after response"]
+        T3["POST scheduler /internal/runs/{id}/complete"]
+    end
+    TRIGGER["POST /analyze · /check/run · /investigate/async"] --> T1 --> T2 --> T3
+
+    subgraph pool["ThreadPoolExecutor — blocking libs off the loop"]
+        B1["DNS resolution (domainwatch)"]
+        B2["python-whois (indicator-intel)"]
+    end
+    LOOP["event loop"] -->|run_in_executor| pool
+
+    NOTE["AI legs are SERIALIZED, not gathered —<br/>GitHub Models concurrency cap = 1-2"]:::warn
+    classDef warn fill:#3a2a1a,stroke:#d29922,color:#fff

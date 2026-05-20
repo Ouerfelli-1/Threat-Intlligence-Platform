@@ -1,0 +1,13 @@
+%% Scaling model — current (single host) and the enabled path
+flowchart TD
+    subgraph now["current: single host"]
+        FE["frontend"] --> NET["internal network"]
+        NET --> SVCS["15 services (1 container each)"]
+        SVCS --> PGB["PgBouncer"] --> PG[("one Postgres, 15 schemas")]
+        SVCS --> RED[("Redis")]
+    end
+    subgraph next["enabled by schema-per-service (P1)"]
+        HOT["a hot service"] --> OWNHOST["lifted to its own host + DB"]
+        OWNHOST -.only conn-string + URL change.-> NOFK["no cross-schema FK to untangle"]
+    end
+    now -.future.-> next

@@ -1,0 +1,21 @@
+%% Runtime flow — what executes when a service boots and serves
+flowchart TD
+    IMPORT["module import<br/>app.main"] --> FACTORY["create_service_app(settings, title, on_startup=[_startup])"]
+    FACTORY --> MW["add CorrelationIdMiddleware<br/>register error handlers<br/>mount /health"]
+    MW --> AUTHMW["conditionally add JWTAuthMiddleware<br/>(skipped when DISABLE_AUTH=true)"]
+    AUTHMW --> ROUTERS["include_router(...) ×N"]
+    ROUTERS --> READY["app object ready"]
+
+    READY -->|uvicorn lifespan| STARTUP["_startup(app)"]
+    STARTUP --> ENGINE["init_engine: build_async_engine + session factory"]
+    STARTUP --> CACHE["Cache.from_url(REDIS_URL) (if used)"]
+    STARTUP --> SEC["SecretsClient → fetch service-specific secrets"]
+    STARTUP --> AI["build_ai_client → LiteLLMClient(litellm:4000)  (AI services)"]
+    STARTUP --> SH["SourceHealthRepository  (ingesters)"]
+    ENGINE & CACHE & SEC & AI & SH --> SERVING["accepting requests"]
+
+    SERVING -->|per request| REQ["correlation id assigned/propagated"]
+    REQ --> HANDLER["route handler (async)"]
+    HANDLER --> DEP["Depends(get_session) → AsyncSession"]
+    HANDLER --> WORK["DB read/write · Redis · downstream HTTP · AI"]
+    WORK --> RESP["response (commit on success / rollback on error)"]

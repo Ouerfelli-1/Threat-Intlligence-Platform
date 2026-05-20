@@ -1,0 +1,14 @@
+%% Where time goes — qualitative latency budget per request class
+flowchart TD
+    subgraph hot["IOC lookup (hot path) — design target sub-200ms"]
+        H1["BFF hop ~1-2ms"] --> H2["Redis GET (hit) ~1ms"] --> H3["return"]
+        H2 -.miss.-> H4["Postgres SELECT (indexed) → populate Redis"]
+    end
+    subgraph read["typical list read"]
+        R1["BFF hop"] --> R2["Postgres SELECT (indexed, paginated)"] --> R3["serialize + return"]
+    end
+    subgraph ai["AI cycle / insight — seconds to minutes"]
+        A1["fan-out context (gather)"] --> A2["LiteLLM call(s) — serialized"] --> A3["validate + persist"]
+        NOTE["dominated by provider latency, not platform code"]:::w
+    end
+    classDef w fill:#3a2a1a,stroke:#d29922,color:#fff

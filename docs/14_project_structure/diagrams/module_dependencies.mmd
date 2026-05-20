@@ -1,0 +1,24 @@
+%% Module dependency direction — services depend on packages, never the reverse
+flowchart TD
+    subgraph services["services/ (15 deployables)"]
+        SVC["each service: app/main.py + routes/ + models.py + schemas.py"]
+    end
+    subgraph packages["packages/ (9 shared libraries)"]
+        TCM["tip_common"]
+        TAUTH["tip_auth"]
+        TDB["tip_db"]
+        TCACHE["tip_cache"]
+        THTTP["tip_http"]
+        TSEC["tip_secrets"]
+        TSH["tip_source_health"]
+        TSCH["tip_schemas"]
+        TAI["tip_ai"]
+    end
+    SVC --> TCM & TAUTH & TDB & TCACHE & THTTP & TSEC & TSH & TSCH & TAI
+    TAUTH --> TCM
+    THTTP --> TCM
+    TSH --> TDB
+    TAI --> TSCH
+    TAI --> TCM
+    NOTE["tip_ai never imports tip_db (ContextProvider protocol only)"]:::n
+    classDef n fill:#13233a,stroke:#58a6ff,color:#fff

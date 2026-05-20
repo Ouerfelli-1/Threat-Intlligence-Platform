@@ -1,0 +1,21 @@
+%% auth — architecture diagram
+graph TD
+    subgraph auth["auth :8000"]
+        MAIN["main.py (startup + routers)"]
+        SECU["security.py (argon2 + RS256)"]
+        SEED["seed.py (reconcile)"]
+        DEPS["deps.py (local JWT)"]
+        ROUTES["routes/*"]
+        MODELS["models.py"]
+    end
+    VAULT["secrets :8012"]
+    PG[("Postgres auth schema")]
+    BFF["frontend BFF"]
+
+    BFF --> ROUTES
+    ROUTES --> DEPS
+    ROUTES --> MODELS
+    DEPS --> SECU
+    MAIN --> SEED --> MODELS
+    MAIN -. bootstrap fetch RS256 .-> VAULT
+    MODELS --> PG

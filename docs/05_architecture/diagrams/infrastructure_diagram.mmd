@@ -1,0 +1,28 @@
+%% Infrastructure diagram — host, volumes, network, stores
+flowchart TB
+    OPS["Operator (SSH)"]
+    USERS["SOC users (HTTPS)"]
+
+    subgraph host["Linux host"]
+        DOCKER["Docker Engine"]
+        subgraph network["bridge: tip-platform_default"]
+            FE["frontend :3000"]
+            SVCS["15 services + litellm :4000"]
+            PGB[(pgbouncer :6432)]
+            PG[(postgres :5432<br/>15 schemas)]
+            RDS[(redis :6379)]
+        end
+        subgraph volumes["named volumes"]
+            VPG[("postgres-data")]
+            VDW[("domainwatch-screenshots")]
+        end
+    end
+
+    OPS --> DOCKER
+    USERS --> FE
+    FE --> SVCS
+    SVCS --> PGB --> PG
+    SVCS --> RDS
+    PG --- VPG
+    SVCS --- VDW
+    SVCS -.outbound only.-> INET["Internet:<br/>feeds + AI provider + search"]

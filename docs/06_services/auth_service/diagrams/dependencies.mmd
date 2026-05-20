@@ -1,0 +1,17 @@
+%% auth — dependency graph (build + runtime)
+graph LR
+    subgraph build["build-time"]
+        AUTH["auth"]
+        AUTH --> tc["tip_common"]
+        AUTH --> td["tip_db"]
+        AUTH --> tsec["tip_secrets"]
+        AUTH --> jwt["pyjwt"]
+        AUTH --> argon["argon2-cffi"]
+        AUTH --> httpx["httpx"]
+    end
+    subgraph runtime["runtime"]
+        AUTHR["auth :8000"]
+        AUTHR -->|startup| SEC["secrets :8012"]
+        AUTHR --> PG[("Postgres")]
+        BFF["BFF"] --> AUTHR
+    end

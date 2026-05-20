@@ -1,0 +1,14 @@
+%% auth — demote-causes-logout request flow
+sequenceDiagram
+    autonumber
+    participant ADM as Admin
+    participant U as Users route
+    participant DB as Postgres auth
+    participant POLL as Victim /me poll (15s)
+    ADM->>U: PATCH /users/{id} {role_id}
+    U->>DB: UPDATE user role
+    U->>DB: UPDATE sessions SET revoked=true WHERE user_id
+    U-->>ADM: 200
+    POLL->>DB: /me checks session
+    DB-->>POLL: revoked
+    POLL-->>POLL: 401 -> clearAuth + redirect /login

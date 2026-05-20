@@ -1,0 +1,25 @@
+%% Request flow — browser to service through the BFF, with cross-cutting middleware
+sequenceDiagram
+    autonumber
+    participant U as Browser (SPA)
+    participant API as lib/api.ts
+    participant BFF as BFF /api/[...path]
+    participant MW as service middleware<br/>(correlation-id + JWTAuth + require_permission)
+    participant H as route handler
+    participant PG as Postgres / Redis
+
+    U->>API: action (e.g. GET threats)
+    API->>API: attach Bearer from Zustand; abort if no token (except /login,/refresh)
+    API->>BFF: GET /api/threats (Authorization)
+    BFF->>BFF: map "threats" -> http://threat-intel:8003
+    BFF->>MW: GET /threats (forward Authorization)
+    MW->>MW: assign/propagate X-Correlation-ID
+    MW->>MW: JWTAuth (no-op when DISABLE_AUTH=true -> dev-admin ctx)
+    MW->>MW: require_permission("threats:read")
+    MW->>H: dispatch
+    H->>PG: query
+    PG-->>H: rows
+    H-->>BFF: 200 JSON + X-Correlation-ID
+    BFF-->>API: 200 (streamed)
+    API-->>U: render (SWR cache)
+    Note over API,BFF: on 401 -> single-flight clearAuth + redirect /login

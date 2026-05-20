@@ -1,0 +1,22 @@
+%% Request lifecycle — edge to data and back
+sequenceDiagram
+    autonumber
+    participant U as browser
+    participant FE as Next.js + BFF (/api/[...path])
+    participant SVC as FastAPI service
+    participant MW as middleware chain
+    participant H as route handler
+    participant DB as Postgres (via PgBouncer)
+
+    U->>FE: fetch /api/articles
+    Note over FE: read JWT from httpOnly cookie
+    FE->>SVC: GET /articles (Authorization: Bearer, X-Correlation-ID)
+    SVC->>MW: CorrelationIdMiddleware (assign/propagate id)
+    MW->>MW: JWTAuthMiddleware (verify RS256 locally — or bypass if DISABLE_AUTH)
+    MW->>H: dispatch
+    H->>DB: SELECT … (AsyncSession via Depends)
+    DB-->>H: rows
+    H-->>MW: response model
+    MW-->>SVC: + correlation header
+    SVC-->>FE: JSON
+    FE-->>U: rendered data

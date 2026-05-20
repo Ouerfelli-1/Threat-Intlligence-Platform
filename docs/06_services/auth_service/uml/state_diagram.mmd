@@ -1,0 +1,10 @@
+%% auth — session lifecycle state diagram
+stateDiagram-v2
+    [*] --> Active: POST /login (session created)
+    Active --> Active: POST /refresh (new access token)
+    Active --> Revoked: POST /logout
+    Active --> Revoked: admin PATCH /users (role/perm change)
+    Active --> Revoked: admin DELETE /sessions/{id}
+    Active --> Expired: expires_at passed
+    Revoked --> [*]: next /me -> 401
+    Expired --> [*]: next /me -> 401

@@ -1,0 +1,48 @@
+%% auth — class diagram (ORM models, from services/auth/app/models.py)
+classDiagram
+    class Role {
+        +UUID id
+        +str name
+        +str[] permissions
+        +datetime created_at
+    }
+    class User {
+        +UUID id
+        +str username
+        +str password_hash  (argon2id)
+        +UUID role_id
+        +str[] supplementary_permissions
+        +bool active
+        +datetime created_at
+        +datetime last_login_at
+    }
+    class ServiceAccount {
+        +UUID id
+        +str name
+        +UUID role_id
+        +str[] supplementary_permissions
+        +str bootstrap_token_hash  (sha256)
+        +datetime created_at
+    }
+    class Session {
+        +UUID id
+        +UUID user_id
+        +str refresh_token_hash  (sha256)
+        +datetime issued_at
+        +datetime expires_at
+        +bool revoked
+        +str user_agent
+        +str ip
+    }
+    class AuditLog {
+        +UUID id
+        +str actor
+        +str action
+        +str target
+        +datetime at
+        +jsonb details
+    }
+
+    Role "1" <-- "many" User : role_id
+    Role "1" <-- "many" ServiceAccount : role_id
+    User "1" <-- "many" Session : user_id

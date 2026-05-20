@@ -1,0 +1,30 @@
+%% Deployment topology — bring-up order and container dependencies
+flowchart TD
+    subgraph stores["Stage 1: stores"]
+        PG[(postgres)]
+        PGB[(pgbouncer)]
+        RDS[(redis)]
+    end
+    INIT["alembic-init<br/>(one-shot, runs all migrations)"]
+    SEC["secrets vault"]
+    SEED1["operator: make seed<br/>seed_secrets.py"]
+    LLM["litellm proxy"]
+    AUTH["auth"]
+    DATA["14 data + synthesis services"]
+    SEED2["bootstrap-seed<br/>(one-shot, profile + tags)"]
+    FE["frontend"]
+
+    PG --> PGB
+    PG --> INIT
+    PGB --> INIT
+    RDS --> INIT
+    INIT -->|completed_successfully| SEC
+    SEC --> SEED1
+    SEED1 --> LLM
+    SEED1 --> AUTH
+    AUTH -->|service_healthy| DATA
+    INIT -->|completed_successfully| DATA
+    LLM --> DATA
+    DATA --> SEED2
+    DATA --> FE
+    AUTH --> FE

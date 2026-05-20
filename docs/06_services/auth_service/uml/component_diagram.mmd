@@ -1,0 +1,19 @@
+%% auth — component diagram
+flowchart TB
+    subgraph auth["auth service container"]
+        ASGI["ASGI app (uvicorn)"]
+        MW["JWT validation (deps.py, local)"]
+        RT["route modules: auth, users, roles, sessions, jwks"]
+        SECU["security.py (argon2 + RS256)"]
+        SEED["seed.py"]
+        ORM["models.py (SQLAlchemy)"]
+    end
+    VAULT[(secrets vault)]
+    DB[(Postgres auth schema)]
+
+    ASGI --> MW --> RT
+    RT --> SECU
+    RT --> ORM
+    SEED --> ORM
+    ASGI -. startup .-> VAULT
+    ORM --> DB

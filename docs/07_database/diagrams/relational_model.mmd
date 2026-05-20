@@ -1,0 +1,28 @@
+%% Relational model — schema partitioning of the single tip database
+graph TB
+    subgraph tip["Postgres database: tip"]
+        subgraph auth["schema auth"]
+            a1[roles] --- a2[users] --- a3[sessions]
+            a4[service_accounts] --- a5[audit_log]
+        end
+        subgraph vuln["schema vuln"]
+            v1[cves] --- v2[epss] --- v3[kev]
+            v1 --- v4[cve_insights]
+        end
+        subgraph ioc["schema ioc"]
+            i1[indicators] --- i2[indicator_sources]
+        end
+        subgraph actors["schema actors"]
+            ac1[actors] --- ac2[actor_ttps]
+            ac1 --- ac3[actor_tools] --- ac4[tools]
+            ac5[ransomware_groups] --- ac6[ransomware_victims]
+        end
+        subgraph orch["schema orchestrator"]
+            o1[reports] --- o2[cve_relevance]
+            o3[actor_likelihood] --- o4[correlations]
+            o5[ai_policies] --- o6[notification_rules] --- o7[notification_dispatches]
+        end
+        subgraph other["schemas: news, threat, integrations, cmdb, flowviz, asm, domainwatch, scheduler, secrets, indicator"]
+            x["each owns its tables"]
+        end
+    end

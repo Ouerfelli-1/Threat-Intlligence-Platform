@@ -1,0 +1,82 @@
+%% Global architecture — enterprise topology view (services, stores, boundaries only)
+graph TB
+    classDef ext fill:#222,stroke:#888,color:#ddd
+    classDef store fill:#1a2a3a,stroke:#2dd4bf,color:#fff
+    classDef edge fill:#143,stroke:#3fb950,color:#fff
+    classDef ai fill:#2a1a3a,stroke:#a371f7,color:#fff
+
+    USER([SOC users])
+
+    subgraph HOST["Single Docker Host — private bridge network"]
+        FE["frontend (Next.js 16)<br/>SPA + BFF :3000"]:::edge
+        AUTH["auth :8000"]:::edge
+
+        subgraph INGEST["Ingestion"]
+            NEWS["news-collector :8001"]
+            VULN["vuln-intel :8002"]
+            THREAT["threat-intel :8003"]
+            IOC["ioc-collector :8004"]
+            ACTORS["threat-actors :8005"]
+        end
+        subgraph ANALYST["Analyst-facing"]
+            CMDB["cmdb :8007"]
+            INTEG["integrations :8006"]
+            ASM["asm :8009"]
+            DW["domainwatch :8010"]
+            II["indicator-intel :8013"]
+        end
+        subgraph BRAIN["AI synthesis"]
+            ORCH["orchestrator :8014"]:::ai
+            FLOW["flowviz :8008"]:::ai
+        end
+        subgraph PLATFORM["Platform"]
+            SCHED["scheduler :8011"]
+            SEC["secrets :8012"]
+            LLM["litellm :4000"]:::ai
+        end
+        subgraph STORES["Stores"]
+            PGB[("PgBouncer :6432")]:::store
+            PG[("Postgres — 15 schemas")]:::store
+            RDS[("Redis")]:::store
+        end
+    end
+
+    EXT["External sources"]:::ext
+    WAZUH["Wazuh SIEM"]:::ext
+    MISP["MISP"]:::ext
+    PROVIDER["AI provider"]:::ext
+    SEARCH["Google CSE / DuckDuckGo"]:::ext
+
+    USER --> FE
+    FE --> AUTH
+    FE --> INGEST
+    FE --> ANALYST
+    FE --> BRAIN
+    FE --> SCHED
+    INGEST --> EXT
+    INTEG --> WAZUH
+    INTEG --> MISP
+    II --> SEARCH
+    SCHED -.->|cron| INGEST
+    SCHED -.->|cron| ORCH
+    ORCH --> INGEST
+    ORCH --> ANALYST
+    ORCH --> FLOW
+    ORCH --> LLM
+    INGEST --> LLM
+    II --> LLM
+    FLOW --> LLM
+    LLM --> PROVIDER
+    INGEST --> PGB
+    ANALYST --> PGB
+    BRAIN --> PGB
+    AUTH --> PGB
+    SCHED --> PGB
+    SEC --> PGB
+    PGB --> PG
+    IOC --> RDS
+    AUTH --> SEC
+    INGEST --> SEC
+    ANALYST --> SEC
+    BRAIN --> SEC
+    LLM --> SEC

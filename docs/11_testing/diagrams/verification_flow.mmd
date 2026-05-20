@@ -1,0 +1,15 @@
+%% Verification flow — the manual gate a change passes before "done"
+flowchart TD
+    CHANGE["code change"] --> LINT["ruff + mypy (local)"]
+    LINT -->|clean| BUILD["compose build changed services"]
+    BUILD --> UP["compose up -d --force-recreate"]
+    UP --> SMOKE["python smoke_test.py"]
+    SMOKE -->|all 15 [OK]| AI{"AI-affecting change?"}
+    AI -->|yes| LLM["python check_litellm.py"]
+    AI -->|no| FE
+    LLM --> FE{"frontend change?"}
+    FE -->|yes| PW["python screenshots/walkthrough.py<br/>review screenshots"]
+    FE -->|no| DONE
+    PW --> DONE([change accepted])
+    SMOKE -->|any BAD| FIX["make logs svc=… → diagnose"]
+    FIX --> CHANGE

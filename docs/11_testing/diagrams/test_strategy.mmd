@@ -1,0 +1,16 @@
+%% The platform's actual test shape — an inverted pyramid (honest)
+flowchart TD
+    subgraph actual["What exists today"]
+        SA["Static analysis<br/>ruff + mypy --strict (CI-less, run by hand)"]
+        SMOKE["Smoke tests<br/>smoke_test.py (15 /health) + check_litellm.py (AI chain)"]
+        MANUAL["Manual E2E<br/>curl verification blocks per phase"]
+        PW["Playwright walkthrough<br/>40+ screenshots, login → every page"]
+    end
+    subgraph missing["What is NOT present (named gaps)"]
+        UNIT["Unit tests (pure functions: normalize, confidence, resilience)"]:::gap
+        INTEG["Integration tests (route + DB + Redis)"]:::gap
+        CONTRACT["Contract tests (OpenAPI ↔ frontend types)"]:::gap
+        CI["Automated CI gate"]:::gap
+    end
+    SA --> SMOKE --> MANUAL --> PW
+    classDef gap fill:#3a1a1a,stroke:#f85149,color:#fff
