@@ -9,7 +9,7 @@ from tip_source_health import SourceHealthRepository
 
 from app.db import close_engine, get_session_factory, init_engine
 from app.models import SourceHealth
-from app.routes import health, investigations
+from app.routes import dorks, health, investigations
 from app.settings import get_settings
 
 settings = get_settings()
@@ -34,6 +34,13 @@ async def _startup(app: FastAPI) -> None:
     settings.shodan_api_key = shodan_key
     settings.intelowl_url = intelowl_url
     settings.intelowl_api_key = intelowl_key
+
+    # Google Custom Search keys for the dorking sub-service. Absent =>
+    # the runner falls straight to DuckDuckGo. Add via Settings → Secrets:
+    #   GOOGLE_API_KEY  (console.cloud.google.com)
+    #   GOOGLE_CSE_ID   (programmablesearchengine.google.com, "search the entire web")
+    app.state.google_api_key = await secrets.get_optional("GOOGLE_API_KEY") or ""
+    app.state.google_cse_id  = await secrets.get_optional("GOOGLE_CSE_ID")  or ""
 
     ai_secrets: dict[str, str] = {}
     # LITELLM_MASTER_KEY: required by the LiteLLM proxy (default client mode).
@@ -86,4 +93,5 @@ app.add_middleware(
 )
 
 app.include_router(investigations.router)
+app.include_router(dorks.router)
 app.include_router(health.router)

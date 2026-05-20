@@ -47,3 +47,42 @@ class SourceHealth(Base):
     last_error: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
     last_http_status: Mapped[Optional[int]] = mapped_column(sa.Integer, nullable=True)
     updated_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
+
+
+class DorkRun(Base):
+    """One Google-dorking session. Parent of DorkFinding rows."""
+    __tablename__ = "dork_runs"
+    __table_args__ = {"schema": SCHEMA}
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    target: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    target_type: Mapped[str] = mapped_column(sa.String(32), nullable=False)
+    categories: Mapped[list[str]] = mapped_column(sa.ARRAY(sa.Text), nullable=False, server_default="{}")
+    backend: Mapped[str] = mapped_column(sa.String(32), nullable=False, server_default="duckduckgo")
+    status: Mapped[str] = mapped_column(sa.String(32), nullable=False, server_default="success")
+    total_findings: Mapped[int] = mapped_column(sa.Integer, nullable=False, server_default="0")
+    error_detail: Mapped[Optional[str]] = mapped_column(sa.Text, nullable=True)
+    started_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())
+    finished_at: Mapped[Optional[sa.DateTime]] = mapped_column(sa.DateTime(timezone=True), nullable=True)
+
+
+class DorkFinding(Base):
+    """One search result from a single dork query."""
+    __tablename__ = "dork_findings"
+    __table_args__ = (
+        sa.ForeignKeyConstraint(
+            ["run_id"], ["indicator.dork_runs.id"], ondelete="CASCADE",
+            name="fk_indicator_dork_findings_run_id",
+        ),
+        {"schema": SCHEMA},
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), nullable=False)
+    dork: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    category: Mapped[str] = mapped_column(sa.String(64), nullable=False)
+    title: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default="")
+    url: Mapped[str] = mapped_column(sa.Text, nullable=False)
+    snippet: Mapped[str] = mapped_column(sa.Text, nullable=False, server_default="")
+    source: Mapped[str] = mapped_column(sa.String(32), nullable=False)
+    discovered_at: Mapped[sa.DateTime] = mapped_column(sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now())

@@ -6,7 +6,7 @@ import Bar from '@/components/shared/Bar';
 import {
   Refresh, Download, Sparkles, AlertTriangle, Globe, Server, Shield,
   FileText, Crosshair, Users, Network, Search, Plus, Activity,
-  ChevronDown, ChevronRight, ExternalLink, Check,
+  ChevronDown, ChevronRight, ExternalLink, Check, Play,
 } from '@/components/icons';
 import { useStore } from '@/lib/store';
 import { useList } from '@/lib/hooks';
@@ -233,6 +233,189 @@ const SOURCE_TILES_DOMAIN = [
   'Threat actor cross-ref',    'Article mentions',
   'IntelOwl (optional)',
 ];
+
+
+/* ── Dorking panel ─────────────────────────────────────────────────────────
+ * Collapsed by default. When opened, fetches the catalog once and lets
+ * the analyst pick categories then fires POST /dorks/run. Results are
+ * grouped by category with the dork query that surfaced each link.
+ */
+interface DorkCatalogCategory { key: string; label: string; description: string; dorks: string[]; }
+interface DorkCatalog { target_types: Record<string, Record<string, DorkCatalogCategory>>; }
+interface DorkFinding { id: string; category: string; dork: string; title: string; url: string; snippet: string; source: string; discovered_at: string; }
+interface DorkRun     { id: string; target: string; target_type: string; backend: string; status: string; total_findings: number; error_detail: string | null; started_at: string; finished_at: string | null; findings: DorkFinding[]; }
+
+function DorksPanel({ target, targetType }: { target: string; targetType: string }) {
+  const [open, setOpen] = useState(false);
+  const [catalog, setCatalog] = useState<DorkCatalog | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [running, setRunning] = useState(false);
+  const [run, setRun] = useState<DorkRun | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // Resolve which target_type to use for the dork catalog. We accept
+  // "ip" / "domain" from the parent investigation; UI lets the analyst
+  // override (e.g. treat a query that looks like an IP as a "company"
+  // when investigating an org name).
+  const effectiveType = (targetType === 'ip' || targetType === 'email' || targetType === 'company')
+    ? targetType : 'domain';
+
+  // Lazy-load catalog the first time we open.
+  const ensureCatalog = useCallback(async () => {
+    if (catalog) return;
+    try {
+      const data = await api.get<DorkCatalog>('/dorks/catalog');
+      setCatalog(data);
+      // Default selection: every category for the resolved type.
+      const cats = Object.keys(data.target_types[effectiveType] ?? {});
+      setSelected(new Set(cats));
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [catalog, effectiveType]);
+
+  useEffect(() => { if (open) ensureCatalog(); }, [open, ensureCatalog]);
+
+  const toggleCat = (k: string) => {
+    setSelected(s => {
+      const n = new Set(s); n.has(k) ? n.delete(k) : n.add(k); return n;
+    });
+  };
+
+  const runDorks = async () => {
+    setRunning(true); setError(null); setRun(null);
+    try {
+      const body = {
+        target, target_type: effectiveType,
+        categories: Array.from(selected),
+        limit_per_dork: 5,
+      };
+      const result = await api.post<DorkRun>('/dorks/run', body);
+      setRun(result);
+    } catch (e) {
+      setError(String(e));
+    } finally { setRunning(false); }
+  };
+
+  const cats = catalog?.target_types[effectiveType] ?? {};
+  // Group findings by category for display.
+  const grouped: Record<string, DorkFinding[]> = {};
+  (run?.findings ?? []).forEach(f => {
+    (grouped[f.category] = grouped[f.category] || []).push(f);
+  });
+
+  return (
+    <div className="card" style={{ marginBottom: 10, border: open ? '1px solid rgba(45,212,191,0.3)' : '1px solid var(--border)' }}>
+      <div className="card-h" style={{ cursor: 'pointer' }} onClick={() => setOpen(v => !v)}>
+        <Search s={13} style={{ color: 'var(--accent)' }} />
+        <div className="t" style={{ color: 'var(--accent)' }}>Google dorking</div>
+        <span style={{ fontSize: 11, color: 'var(--text-4)', marginLeft: 4 }}>
+          {run ? `— ${run.total_findings} finding${run.total_findings === 1 ? '' : 's'} via ${run.backend}` :
+                 `— search engines (Google + DuckDuckGo fallback) targeting ${effectiveType}`}
+        </span>
+        <div style={{ marginLeft: 'auto' }}>{open ? <ChevronDown s={13} /> : <ChevronRight s={13} />}</div>
+      </div>
+
+      {open && (
+        <div style={{ padding: '14px 16px' }}>
+          {!catalog && !error && <div style={{ fontSize: 12, color: 'var(--text-4)' }}>Loading catalog…</div>}
+          {error && (
+            <div style={{ fontSize: 11.5, color: '#f85149', padding: '8px 10px',
+                          background: 'rgba(248,81,73,0.08)', border: '1px solid rgba(248,81,73,0.25)',
+                          borderRadius: 4, marginBottom: 10 }}>
+              {error}
+            </div>
+          )}
+
+          {catalog && (
+            <>
+              <div style={{ fontSize: 11, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8 }}>
+                Categories
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 12 }}>
+                {Object.entries(cats).map(([key, spec]) => (
+                  <label key={key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 8px',
+                                              background: selected.has(key) ? 'rgba(45,212,191,0.08)' : 'var(--bg-elev)',
+                                              border: '1px solid ' + (selected.has(key) ? 'rgba(45,212,191,0.3)' : 'var(--border-soft)'),
+                                              borderRadius: 4, cursor: 'pointer', fontSize: 11.5 }}>
+                    <input type="checkbox" checked={selected.has(key)} onChange={() => toggleCat(key)} style={{ marginTop: 2 }} />
+                    <div>
+                      <div style={{ fontWeight: 600, color: 'var(--text-2)' }}>{spec.label}</div>
+                      <div style={{ fontSize: 10.5, color: 'var(--text-4)', marginTop: 2 }}>{spec.description}</div>
+                      <div style={{ fontSize: 9.5, color: 'var(--text-mute)', marginTop: 3 }}>{spec.dorks.length} dork{spec.dorks.length === 1 ? '' : 's'}</div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <button className="btn primary sm" onClick={runDorks} disabled={running || selected.size === 0}>
+                  {running ? <><Refresh s={11} /> Running…</> : <><Play s={11} /> Run {selected.size} categor{selected.size === 1 ? 'y' : 'ies'}</>}
+                </button>
+                <span style={{ fontSize: 10.5, color: 'var(--text-4)' }}>
+                  Uses Google CSE if configured (Settings → Secrets: <span className="mono">GOOGLE_API_KEY</span> + <span className="mono">GOOGLE_CSE_ID</span>);
+                  otherwise DuckDuckGo.
+                </span>
+              </div>
+            </>
+          )}
+
+          {run && (
+            <div style={{ marginTop: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 11, marginBottom: 8 }}>
+                <span className={`badge ${run.status === 'success' ? 'low' : run.status === 'degraded' ? 'high' : 'crit'}`}>
+                  {run.status}
+                </span>
+                <span style={{ color: 'var(--text-4)' }}>
+                  {run.backend} backend · {run.total_findings} finding{run.total_findings === 1 ? '' : 's'}
+                </span>
+                {run.error_detail && (
+                  <span style={{ color: 'var(--high)', fontSize: 10.5 }} title={run.error_detail}>
+                    (with notes — hover for details)
+                  </span>
+                )}
+              </div>
+              {Object.keys(grouped).length === 0 && (
+                <div style={{ fontSize: 12, color: 'var(--text-4)', padding: 12, textAlign: 'center' }}>
+                  No findings. The target may genuinely have no exposed content under these dorks,
+                  or DuckDuckGo blocked us — try fewer categories or wait a few minutes.
+                </div>
+              )}
+              {Object.entries(grouped).map(([cat, items]) => {
+                const catLabel = cats[cat]?.label ?? cat;
+                return (
+                  <div key={cat} style={{ marginBottom: 14 }}>
+                    <div style={{ fontSize: 10.5, color: 'var(--text-4)', textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 6 }}>
+                      {catLabel} <span style={{ color: 'var(--text-mute)' }}>· {items.length}</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                      {items.map(f => (
+                        <div key={f.id} style={{ padding: '8px 10px', background: 'var(--bg-elev)', borderRadius: 4, border: '1px solid var(--border-soft)' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 3 }}>
+                            <a href={f.url} target="_blank" rel="noreferrer"
+                               style={{ color: 'var(--accent)', fontSize: 12.5, fontWeight: 500, textDecoration: 'none', flex: 1, wordBreak: 'break-all' }}>
+                              {f.title || f.url} <ExternalLink s={9} />
+                            </a>
+                            <span className="tag" style={{ fontSize: 9 }}>{f.source}</span>
+                          </div>
+                          {f.snippet && (
+                            <div style={{ fontSize: 11, color: 'var(--text-3)', lineHeight: 1.4, marginBottom: 4 }}>{f.snippet}</div>
+                          )}
+                          <div className="mono" style={{ fontSize: 10, color: 'var(--text-mute)', wordBreak: 'break-all' }}>{f.dork}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 export default function InvestigatePage() {
   const token = useStore(s => s.token);
@@ -746,7 +929,15 @@ export default function InvestigatePage() {
             </Sec>
           )}
 
-          {/* 8. AI Analysis — collapsed, on-demand only */}
+          {/* 8. Google dorking — collapsed, on-demand. Uses the resolved
+              target (the indicator we successfully investigated) so the
+              dorks fire against whatever passed normalization. */}
+          <DorksPanel
+            target={result.normalized_value ?? result.raw_value ?? ''}
+            targetType={result.indicator_type ?? 'domain'}
+          />
+
+          {/* 9. AI Analysis — collapsed, on-demand only */}
           <AIPanel inv={result} onRequest={requestAI} requesting={aiRequesting} requestError={aiError} />
         </div>
       )}

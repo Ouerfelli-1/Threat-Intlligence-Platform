@@ -57,6 +57,7 @@ const SERVICE_MAP: Record<string, string> = {
   // Indicator Intel
   investigate:    process.env.API_INDICATOR_URL     || 'http://indicator-intel:8013',
   investigations: process.env.API_INDICATOR_URL     || 'http://indicator-intel:8013',
+  dorks:          process.env.API_INDICATOR_URL     || 'http://indicator-intel:8013',
   // Orchestrator
   actions:        process.env.API_ORCHESTRATOR_URL  || 'http://orchestrator:8014',
   policies:       process.env.API_ORCHESTRATOR_URL  || 'http://orchestrator:8014',

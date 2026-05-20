@@ -17,6 +17,10 @@ dependencies = [
     "tip-schemas @ file:///app/packages/tip_schemas",
     "tip-ai @ file:///app/packages/tip_ai",
     "tip-secrets @ file:///app/packages/tip_secrets",
+    # DuckDuckGo fallback for the dorking sub-service. ddgs is the
+    # actively-maintained community successor to duckduckgo-search; both
+    # ship the same DDGS class and we import either at runtime.
+    "ddgs>=9.0",
 ]
 
 [tool.setuptools.packages.find]
